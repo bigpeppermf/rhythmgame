@@ -23,7 +23,11 @@ retransmission, camera image, or game event is sent. Godot owns judgment/scoring
 - `t_capture`: Python `perf_counter()` seconds immediately after `cap.read()`.
   This is read-completion time, not sensor exposure time or send time. Each
   snapshot retains its capture timestamp through inference and serialization.
+  Live webcam capture now runs on a thread holding only the latest frame. The
+  timestamp belongs to that selected frame; unprocessed camera frames are skipped.
 - `fps`: measured processing-loop rate, updated about once a second. Initially 0.
+  The separate Capture FPS shown in the demo is not transmitted. `seq` counts
+  packet attempts, not captured frames; capture skips do not cause sequence gaps.
 - `hands`: always two slots, 0 = anatomical left, 1 = anatomical right. Use the
   slot field for assignment. Both can be LOST, including at startup.
 - `x/y`: currently **uncalibrated**, normalized mirrored image coordinates in
