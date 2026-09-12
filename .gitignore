@@ -1,0 +1,36 @@
+# --- Godot 4 ---
+.godot/
+/android/
+*.translation
+export_presets.cfg
+/build/
+/exports/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# --- Vision dev artifacts ---
+# Recorded sessions & calibration are machine-specific.
+# Keep a small sample clip if you want one; ignore the rest.
+/recordings/
+/captures/
+calibration.local.json
+*.mp4
+*.avi
+
+# --- Editors / OS ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- Local agent/session state ---
+.remember/
+.claude/
