@@ -34,3 +34,7 @@ Thumbs.db
 # --- Local agent/session state ---
 .remember/
 .claude/
+
+# Generated test assets (regenerate with tools/make_click_track.py)
+game/audio/click_*.wav
+game/audio/click_*.wav.import
