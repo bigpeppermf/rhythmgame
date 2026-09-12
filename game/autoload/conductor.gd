@@ -47,16 +47,45 @@ func _exit_tree() -> void:
 
 
 func play(stream: AudioStream, song_bpm: float) -> void:
+	play_from(stream, song_bpm, 0.0)
+
+
+## Start (or restart) at an arbitrary point. The editor scrubs with this.
+func play_from(stream: AudioStream, song_bpm: float, from_seconds: float) -> void:
 	bpm = song_bpm
 	_player.stream = stream
-	song_time = 0.0
-	audio_time = 0.0
-	_last_beat = -1
+	song_time = from_seconds
+	audio_time = from_seconds
+	# Beats before the seek point must not fire. floor(t/spb) is the last beat
+	# already past, so starting there means the next one emitted is the first
+	# that genuinely follows.
+	var spb: float = 60.0 / maxf(bpm, 0.0001)
+	_last_beat = int(floor(from_seconds / spb)) if from_seconds > 0.0 else -1
 	_started = false
 	playing = true
 	set_process(true)
-	_player.play()
+	_player.play(from_seconds)
 	song_started.emit()
+
+
+## Jump within the song that is already playing.
+##
+## `_started = false` is the point of this: it makes the next _process reseed
+## song_time straight from the audio clock instead of easing toward it. The
+## continuous correction is built for drift of a few milliseconds; asked to
+## absorb a two second jump it would take a visible second to settle, and the
+## editor would feel broken.
+func seek(to_seconds: float) -> void:
+	if _player.stream == null:
+		return
+	var spb: float = 60.0 / maxf(bpm, 0.0001)
+	song_time = to_seconds
+	audio_time = to_seconds
+	_last_beat = int(floor(to_seconds / spb)) if to_seconds > 0.0 else -1
+	_started = false
+	playing = true
+	set_process(true)
+	_player.play(to_seconds)
 
 
 func stop() -> void:

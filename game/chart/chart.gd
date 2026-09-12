@@ -48,8 +48,54 @@ static func load_from(path: String) -> Chart:
 		n.length = float(raw.get("length", 0.0)) * spb
 		c.notes.append(n)
 
-	c.notes.sort_custom(func(a: Note, b: Note) -> bool: return a.time < b.time)
+	# Sort on (time, slot), not time alone. Simultaneous notes are common - both
+	# hands land on the same beat all through the chart - and comparing only
+	# time leaves their relative order to an unstable sort, so the same file
+	# can load in a different order twice. Nothing downstream reads tie order,
+	# but a chart that is not deterministic is one the editor cannot round-trip.
+	c.notes.sort_custom(func(a: Note, b: Note) -> bool:
+		return a.slot < b.slot if is_equal_approx(a.time, b.time) else a.time < b.time)
 	return c
+
+
+## Back to the JSON the game loads. Round-tripping is the requirement: loading
+## and saving with no edits in between must reproduce the same chart, or the
+## editor silently rewrites every file it opens.
+##
+## Beats are recovered from seconds rather than remembered, so a chart whose
+## BPM was corrected keeps its notes on the beat rather than at their old
+## wall-clock positions.
+func to_dict() -> Dictionary:
+	var spb: float = 60.0 / maxf(bpm, 0.0001)
+	var out: Array = []
+	for n in notes:
+		var entry := {
+			"beat": snappedf((n.time - offset) / spb, 0.0001),
+			"slot": n.slot,
+			"x": snappedf(n.pos.x, 0.0001),
+			"y": snappedf(n.pos.y, 0.0001),
+			"type": "hold" if n.kind == Note.Kind.HOLD else "tap",
+		}
+		if n.kind == Note.Kind.HOLD:
+			entry["length"] = snappedf(n.length / spb, 0.0001)
+		out.append(entry)
+	return {
+		"title": title,
+		"bpm": bpm,
+		"audio": audio_path,
+		"offset": offset,
+		"notes": out,
+	}
+
+
+func save_to(path: String) -> Error:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		push_error("Chart: cannot write %s (%d)" % [path, FileAccess.get_open_error()])
+		return FileAccess.get_open_error()
+	f.store_string(JSON.stringify(to_dict(), " "))
+	f.close()
+	return OK
 
 
 func duration() -> float:
