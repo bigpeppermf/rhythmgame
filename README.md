@@ -193,9 +193,9 @@ acquisition, after any missing observation, or after a gap of at least 200 ms.
 
 The cursor panel shows each state, confidence, and vx/vy. COASTING holds and fades
 the cursor; LOST hides it. Debug landmarks are drawn only for fresh detections.
-State updates occur as frames are processed; a blocked camera read will still
-freeze the loop until capture threading is implemented. Receivers therefore need
-their own packet timeout in addition to these hand tracking states.
+State updates occur only for fresh processed frames. During a camera stall the
+panel hides cursors after 200 ms and the sender stops publishing. Receivers use
+their own packet timeout in addition to the hand tracking states.
 
 Coordinates remain **uncalibrated image coordinates**: x increases right in the
 mirrored image, y=0 is the top, y=1 is the bottom. Both axes are measured but only
@@ -203,7 +203,49 @@ y drives the cursors. These are not yet post-calibration wire-protocol values.
 
 The panel measures loop FPS and detection time, not end-to-end latency. Camera
 setting requests and readbacks print at startup; support varies by backend.
-Exposure and buffering still need hardware tuning.
+Exposure and backend buffering still need hardware measurements.
+
+### Latest-frame webcam capture
+
+Use the [live camera checklist](vision/LIVE_CAMERA_CHECKLIST.md) to check controls,
+hand loss, capture performance, UDP, and shutdown. It includes a results table
+and explicitly marks bystander rejection as a known failing area: player ownership
+is not yet implemented.
+
+`vision/capture.py` reads the live webcam on a dedicated thread. Each captured
+image replaces a single latest-frame slot. If inference is slower than capture,
+intermediate frames are skipped rather than queued. A frame already handed to
+the detector remains stable while the capture thread publishes newer ones.
+There is no new command to enable this: live webcam input uses it by default.
+Recorded files (`--video`) remain sequential so their frames are not discarded.
+
+The capture worker records `perf_counter()` immediately after each `read()`;
+that timestamp travels with the frame into detection, hand states, and UDP.
+Each frame is processed at most once. UDP `seq` still counts send attempts, not
+camera frames: skipped camera images do not introduce UDP sequence gaps.
+
+The panel adds three measurements:
+
+- **Capture FPS:** actual worker read rate; **Loop FPS** remains the processing
+  rate and is still the `fps` value in UDP. Both start at zero while measuring.
+- **Skipped:** total captured frames superseded before the detector consumed them.
+  This is expected when capture is faster than detection.
+- **Wait:** milliseconds from read completion to selecting the frame for detection.
+  It excludes exposure, camera/driver buffering, and detection time; it is not
+  an end-to-end latency measurement.
+
+The UI polls for frames with short waits, so Q/Esc still works during camera
+stalls. No repeated stale snapshots are transmitted. After 2 seconds without
+a frame, the demo exits with an error. A read failure also exits with an error.
+The capture worker owns camera release. Shutdown waits up to 1 second for it;
+if a native driver hangs inside `read()`, the demo reports that condition and
+the daemon worker releases the camera if the call returns. The main thread
+does not try to release a camera while another thread is reading it.
+
+The demo still requests `CAP_PROP_BUFFERSIZE=1`, but backend acceptance varies.
+The thread removes the application's growing backlog; actual hardware latency
+still needs a webcam check. Try fast hand motion and compare Capture FPS, Loop
+FPS, Skipped, and Wait. Tests use controlled fake cameras, not live hardware.
 
 Camera-free tests use synthetic landmark results and controlled capture timestamps:
 
@@ -239,7 +281,7 @@ Share [vision/UDP_PROTOCOL.md](vision/UDP_PROTOCOL.md) with the Godot teammate:
 it documents the exact fields, coordinate conventions, receiver behavior,
 sender restarts, and same-computer/LAN setup. No new dependencies are required.
 
-Latest-frame capture, reach calibration, and smoothing remain future work.
+Reach calibration and smoothing remain future work.
 
 **Read [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) first** — it has the wire
 protocol, the latency analysis, the vision rules, and the Godot architecture.
