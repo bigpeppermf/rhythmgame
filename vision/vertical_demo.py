@@ -66,6 +66,28 @@ def poll_keys(debug):
     return debug, False
 
 
+def open_camera(requested, backend):
+    """Open the requested index, or the first one that actually delivers a frame.
+
+    Index 0 is not reliably a camera. Virtual devices (Iriun, OBS, DroidCam)
+    register there and open successfully - or fail to - with nothing behind
+    them, and the integrated camera lands at 1. isOpened() is not enough to
+    tell: a device can open and never produce a frame. So the test is a read.
+    """
+    candidates = [requested] + [i for i in range(6) if i != requested]
+    for index in candidates:
+        cap = cv2.VideoCapture(index, backend)
+        if cap.isOpened():
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                if index != requested:
+                    print(f"Camera {requested} gave no frames; using camera {index} instead "
+                          f"(pass --camera {index} to skip this probe).")
+                return cap
+        cap.release()
+    return cv2.VideoCapture(requested, backend)  # let the caller's error path report it
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--camera", type=int, default=0)
@@ -84,7 +106,7 @@ def main():
         cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY)
     detector = HandDetector(args.model)
     state_tracker = HandStateTracker()
-    cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, backend)
+    cap = cv2.VideoCapture(args.video) if args.video else open_camera(args.camera, backend)
     sender = None
     preview = None
     capture = None

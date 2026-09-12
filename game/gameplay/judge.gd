@@ -21,7 +21,10 @@ const PERFECT_TIME := 0.05
 const GREAT_TIME := 0.10
 const GOOD_TIME := 0.18
 
-## Spatial tolerance in normalized units. A note is a circle this big.
+## Spatial tolerance in normalized units of HEIGHT. Each hand has one lane,
+## so a note's x carries no information and is not judged: the tracker's x is
+## wherever the hand happens to be in the camera frame, and asking it to also
+## land on the lane centre would fail players for standing slightly off-axis.
 const HIT_RADIUS := 0.09
 const PERFECT_RADIUS := 0.035
 const GREAT_RADIUS := 0.060
@@ -68,7 +71,7 @@ func _admit(now: float) -> void:
 ## Returns true if the note is still live.
 func _evaluate(n: Note, now: float, delta: float) -> bool:
 	var hand: HandObservation = HandState.hands[n.slot]
-	var inside: bool = hand.is_usable() and HandState.cursor(n.slot).distance_to(n.pos) <= HIT_RADIUS
+	var inside: bool = hand.is_usable() and _distance(n) <= HIT_RADIUS
 
 	if n.kind == Note.Kind.HOLD:
 		return _evaluate_hold(n, now, delta, hand, inside)
@@ -92,7 +95,7 @@ func _evaluate(n: Note, now: float, delta: float) -> bool:
 		if not n._entered or absf(dt) < absf(n.timing_error):
 			n._entered = true
 			n.timing_error = dt
-			n.hit_distance = HandState.cursor(n.slot).distance_to(n.pos)
+			n.hit_distance = _distance(n)
 		if now >= n.time:
 			n.verdict = _grade(absf(n.timing_error), n.hit_distance)
 			note_judged.emit(n)
@@ -146,6 +149,11 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 		return false
 
 	return true
+
+
+## How far the hand is from the note, along the one axis that is charted.
+func _distance(n: Note) -> float:
+	return absf(HandState.cursor(n.slot).y - n.pos.y)
 
 
 ## Grade on both axes and take the worse. You need to be on time *and* on

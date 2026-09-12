@@ -120,7 +120,10 @@ func _simulate(chart: Chart, follow: bool, hold_ratio: float,
 				HandState.hands[slot].state = HandObservation.State.TRACKED
 		else:
 			for slot in 2:
-				HandState.hands[slot].pos = Vector2(0.5, 0.02)  # parked, far from every note
+				# Parked well outside the height range. Only height is judged,
+				# so "far" has to mean far in y - a hand at y=0.02 is within
+				# HIT_RADIUS of a note charted at 0.10.
+				HandState.hands[slot].pos = Vector2(0.5, -1.0)
 				HandState.hands[slot].conf = 1.0
 				HandState.hands[slot].state = HandObservation.State.TRACKED
 		judge.tick(t, DT)
@@ -146,8 +149,8 @@ func _target(notes: Array, next: Array[int], slot: int, t: float,
 			continue
 		if t >= n.time - lead:
 			return n.pos
-		return Vector2(0.5, 0.02)
-	return Vector2(0.5, 0.02)
+		return Vector2(0.5, -1.0)
+	return Vector2(0.5, -1.0)
 
 
 func _is_sorted(chart: Chart) -> bool:

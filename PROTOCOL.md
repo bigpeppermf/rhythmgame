@@ -65,7 +65,7 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 | Field | Type | Meaning |
 |---|---|---|
 | `slot` | int | `0` = left, `1` = right, **as they appear on the game screen**. Stable across frames — see Slot Identity. |
-| `x`, `y` | float | Normalized position after calibration. `[0,1]` is the play area; up to `[-0.1, 1.1]` is allowed overshoot. `x=0` is screen-left, `y=0` is screen-**top**. |
+| `x`, `y` | float | Normalized position after calibration. **The game currently judges `y` only** — each hand has one vertical lane, so `x` says nothing the slot does not already say. Send it anyway; it is cheap and a future layout may use it. Normalized position after calibration. `[0,1]` is the play area; up to `[-0.1, 1.1]` is allowed overshoot. `x=0` is screen-left, `y=0` is screen-**top**. |
 | `vx`, `vy` | float | Velocity in normalized units per second. Used for extrapolation between packets. |
 | `conf` | float | `[0,1]`. The game fades the cursor below ~0.4 and stops judging at 0. |
 | `state` | string | `TRACKED` \| `COASTING` \| `LOST` |

@@ -304,8 +304,15 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 ## Running
 
 ```bash
-cd game && godot .        # F5 — menu → play → results
+.venv/bin/python vision/vertical_demo.py --preview   # terminal 1: tracker + self-view
+cd game && godot --path .                             # terminal 2: the game
 ```
+
+The game starts on the mouse mock and switches to the camera by itself the
+moment tracker packets arrive — no key to press. `U` still switches by hand.
+The tracker probes for a camera that actually delivers frames, so a virtual
+webcam squatting on index 0 (Iriun, OBS, DroidCam) no longer breaks it; pass
+`--camera N` to skip the probe.
 
 | Scene | |
 |---|---|
@@ -357,6 +364,11 @@ median of ~20 swings becomes `Settings.input_offset`.
   `godot --headless --editor --quit-after 4000` from `game/`.
 - **`Skin` is a native Godot class.** Shadowing a native name fails the parse
   with a misleading cascade — hence `GameSkin`.
+- **`/dev/video0` is often not the camera.** Phone-webcam and virtual-camera
+  drivers register at index 0 and open with nothing behind them. The tracker
+  probes for frames now; if it still can't find one, `v4l2-ctl --list-devices`.
+- **Only height is judged.** Each hand has one lane, so the tracker's `x` is
+  ignored — standing a little off-centre costs nothing.
 - **Vision runs on 5005 (hands) and 5006 (preview).** The game listens on the
   same. `PROTOCOL.md` is the contract; change it there first.
 - On Wayland desktops the game window is XWayland, so X11 screenshot tools

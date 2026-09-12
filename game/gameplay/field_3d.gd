@@ -82,9 +82,11 @@ static func note_position(note_time: float, now: float, slot: int, p: Vector2) -
 	return at(slot, note_time - now, p.y, p.x - TRACK_X[slot])
 
 
-## Where a hand's cursor sits: on the hit edge, at the hand's height.
+## Where a hand's cursor sits: on the hit edge, at the hand's height. The
+## hand's x is ignored - it is not judged, so drawing it would show a drift
+## that costs the player nothing and looks like it should.
 static func cursor_position(slot: int, p: Vector2) -> Vector3:
-	return at(slot, 0.0, p.y, p.x - TRACK_X[slot])
+	return at(slot, 0.0, p.y, 0.0)
 
 
 ## Orientation for anything drawn on a panel. In this basis -Z runs away down
