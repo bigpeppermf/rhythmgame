@@ -3,6 +3,7 @@
 from dataclasses import dataclass, replace
 from math import isfinite
 from typing import Literal
+from gestures import Gesture
 
 
 LOSS_TIMEOUT = 0.2  # Seconds since the last accepted capture, not frame count.
@@ -17,6 +18,7 @@ class HandState:
     last_seen: float | None = None
     state: Literal["TRACKED", "COASTING", "LOST"] = "LOST"
     confidence: float = 0.0  # Usability weight, not a model probability.
+    gesture: Gesture = Gesture()
 
 
 class HandStateTracker: 
@@ -30,7 +32,11 @@ class HandStateTracker:
         self.hands = (HandState(slot=0), HandState(slot=1))
         self.last_update = None
 
-    def update(self, positions: list[Position | None], timestamp: float):
+    def update(self, positions: list[Position | None], timestamp: float, gestures=None):
+        if gestures is None:
+            gestures = [Gesture(), Gesture()]
+        if len(gestures) != 2 or not all(isinstance(gesture, Gesture) for gesture in gestures):
+            raise ValueError("Provide exactly two Gesture observations.")
         if not isfinite(timestamp) or (
             self.last_update is not None and timestamp <= self.last_update
         ):
@@ -45,7 +51,7 @@ class HandStateTracker:
                 raise ValueError("Positions must be finite normalized (x, y) pairs.")
 
         updated = []
-        for previous, position in zip(self.hands, positions):
+        for previous, position, gesture in zip(self.hands, positions, gestures):
             if position is not None:
                 velocity = (0.0, 0.0)
                 if (previous.state == "TRACKED" and previous.last_seen is not None
@@ -54,14 +60,15 @@ class HandStateTracker:
                     velocity = tuple((current - old) / elapsed
                                      for current, old in zip(position, previous.position))
                 hand = HandState(previous.slot, tuple(position), velocity,
-                                 timestamp, "TRACKED", 1.0)
+                                 timestamp, "TRACKED", 1.0, gesture)
             elif (previous.last_seen is not None
                   and timestamp < previous.last_seen + LOSS_TIMEOUT):
                 age = timestamp - previous.last_seen
                 hand = replace(previous, state="COASTING", velocity=(0.0, 0.0),
-                               confidence=max(0.0, 1.0 - age / LOSS_TIMEOUT))
+                               confidence=max(0.0, 1.0 - age / LOSS_TIMEOUT), gesture=Gesture())
             else:
-                hand = replace(previous, state="LOST", velocity=(0.0, 0.0), confidence=0.0)
+                hand = replace(previous, state="LOST", velocity=(0.0, 0.0), confidence=0.0,
+                               gesture=Gesture())
             updated.append(hand)
 
         self.hands = tuple(updated)

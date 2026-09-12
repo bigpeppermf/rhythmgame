@@ -71,6 +71,7 @@ def main():
                     hands = sorted(packet["hands"], key=lambda hand: hand["slot"])
                     summaries = [
                         f"{name}: {hand['state']} y={hand['y']:.3f} conf={hand['conf']:.2f}"
+                        + (f" gesture={hand['gesture']} ({hand['gesture_conf']:.2f})" if "gesture" in hand else "")
                         for name, hand in zip(("Left", "Right"), hands)
                     ]
                     text = f"seq={packet['seq']} fps={packet['fps']:.1f} | " + " | ".join(summaries)

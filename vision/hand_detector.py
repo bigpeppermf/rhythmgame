@@ -1,14 +1,16 @@
 """MediaPipe palm observations with anatomical slot initialization and continuity."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import product
 from math import dist, isfinite
 from pathlib import Path
 
 import cv2
+from gestures import Gesture, GestureDebouncer, analyze_gesture
 
 PALM_LANDMARKS = (0, 5, 9, 13, 17)
 DEFAULT_MODEL = Path(__file__).parent / "models" / "hand_landmarker.task"
+DEFAULT_GESTURE_MODEL = Path(__file__).parent / "models" / "gesture_recognizer.task"
 
 
 @dataclass(frozen=True)
@@ -17,12 +19,16 @@ class Palm:
     handedness: str
     score: float  # Handedness certainty, NOT hand-presence confidence.
     landmarks: tuple[tuple[float, float], ...]
+    gesture: Gesture = Gesture()
+    gesture_debug: str = ""
 
 
-def extract_palms(result):
+def extract_palms(result, image_aspect=1.0):
     """Average palm landmarks and correct labels for the mirrored demo input."""
     palms = []
-    for landmarks, categories in zip(result.hand_landmarks, result.handedness):
+    gesture_results = getattr(result, "gestures", [])
+    world_results = getattr(result, "hand_world_landmarks", [])
+    for index, (landmarks, categories) in enumerate(zip(result.hand_landmarks, result.handedness)):
         if len(landmarks) != 21 or not categories:
             continue
         category = max(categories, key=lambda item: item.score)
@@ -38,7 +44,11 @@ def extract_palms(result):
         # The live demo showed opposite anatomical labels after its input flip.
         # Correct once here, before continuity tracking and state assignment.
         handedness = {"Left": "Right", "Right": "Left"}[category.category_name]
-        palms.append(Palm(center, handedness, category.score, points))
+        world = world_results[index] if index < len(world_results) else ()
+        gesture, details = (analyze_gesture(gesture_results[index], world, landmarks, image_aspect)
+                            if index < len(gesture_results) else (Gesture(), ""))
+        palms.append(Palm(center, handedness, category.score, points, gesture,
+                          f"{details} raw={gesture.label}:{gesture.confidence:.2f}"))
     return palms
 
 
@@ -87,7 +97,9 @@ class PalmSlots:
 class HandDetector:
     """Accept mirrored BGR frames; extract_palms corrects left/right labels."""
 
-    def __init__(self, model_path=DEFAULT_MODEL):
+    def __init__(self, model_path=None, gestures=False):
+        if model_path is None:
+            model_path = DEFAULT_GESTURE_MODEL if gestures else DEFAULT_MODEL
         try:
             import mediapipe as mp
         except ImportError as error:
@@ -95,9 +107,13 @@ class HandDetector:
                 "MediaPipe is missing. Install vision/requirements.txt with this Python."
             ) from error
         if not Path(model_path).is_file():
-            raise RuntimeError("Hand model is missing. Run: python vision/download_model.py")
+            command = "python vision/download_model.py" + (" --gestures" if gestures else "")
+            raise RuntimeError(f"Model is missing. Run: {command}")
         self.mp = mp
-        options = mp.tasks.vision.HandLandmarkerOptions(
+        self.gestures_enabled = gestures
+        options_class = (mp.tasks.vision.GestureRecognizerOptions if gestures
+                         else mp.tasks.vision.HandLandmarkerOptions)
+        options = options_class(
             base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
             running_mode=mp.tasks.vision.RunningMode.VIDEO,
             num_hands=2,
@@ -105,8 +121,10 @@ class HandDetector:
             min_hand_presence_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        self.landmarker = mp.tasks.vision.HandLandmarker.create_from_options(options)
+        task_class = mp.tasks.vision.GestureRecognizer if gestures else mp.tasks.vision.HandLandmarker
+        self.landmarker = task_class.create_from_options(options)
         self.slots = PalmSlots()
+        self.gesture_debouncer = GestureDebouncer()
         self.last_timestamp_ms = -1
 
     def detect(self, frame, timestamp):
@@ -115,8 +133,18 @@ class HandDetector:
         # Tasks requires strictly increasing integer milliseconds.
         timestamp_ms = max(self.last_timestamp_ms + 1, int(timestamp * 1000))
         self.last_timestamp_ms = timestamp_ms
-        result = self.landmarker.detect_for_video(image, timestamp_ms)
-        return self.slots.update(extract_palms(result), timestamp)
+        if self.gestures_enabled:
+            result = self.landmarker.recognize_for_video(image, timestamp_ms)
+        else:
+            result = self.landmarker.detect_for_video(image, timestamp_ms)
+        palms = self.slots.update(extract_palms(result, frame.shape[1] / frame.shape[0]), timestamp)
+        if self.gestures_enabled:
+            gestures = self.gesture_debouncer.update(
+                [palm.gesture if palm is not None else Gesture() for palm in palms], timestamp,
+                present=[palm is not None for palm in palms])
+            palms = [replace(palm, gesture=gesture) if palm is not None else None
+                     for palm, gesture in zip(palms, gestures)]
+        return palms
 
     def close(self):
         self.landmarker.close()

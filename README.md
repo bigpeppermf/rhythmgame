@@ -111,6 +111,83 @@ is uploaded. `--model path/to/hand_landmarker.task` points at another copy.
 
 ## Run the palm tracker
 
+### Optional gesture mode
+
+Open palm is the normal input pose. The three action poses are **FIST**,
+**THUMBS_UP**, and **PINCH** (index finger and thumb tips together, with the
+middle, ring, and little fingers loosely curled).
+Enable gesture mode to distinguish these while continuing to track both positions.
+From an activated venv, run:
+
+```bash
+python vision/download_model.py --gestures
+python vision/vertical_demo.py --debug --gestures
+```
+
+Or without activation on any platform with uv installed:
+
+```bash
+uv run vision/download_model.py --gestures
+uv run vision/vertical_demo.py --debug --gestures
+```
+
+The gesture model is a separate ignored download; each teammate needs it once.
+No new Python dependencies are required. Plain demo mode still uses the hand
+landmarker and sends the original position-only JSON. `--model` can override
+the path, but the file must match the selected task (hand or gesture).
+
+Gesture mode uses MediaPipe's Gesture Recognizer in place of the hand landmarker,
+so there is one hand-detection pipeline. Its Open_Palm, Closed_Fist, and Thumb_Up
+classes map to OPEN_PALM, FIST, and THUMBS_UP. Model thresholds are 0.55 for palm
+and thumbs-up, and 0.70 for fist. Hand-shape fallbacks recognize four extended
+fingers as open palm, or an upright straight thumb with curled fingers as thumbs-up.
+The same geometry works for either hand; image distances account for frame aspect.
+
+PINCH primarily uses image-space thumb/index-tip separation relative to palm size,
+with world landmarks used for hand shape and a loose depth sanity check. It enters
+at gap <= 0.30 of palm size and can remain active to 0.45; the wider band cannot
+activate a new pinch. All three remaining fingers must show bent joints, but
+their fingertips can stay farther out rather than tucking near the palm. Fully
+extended fingers are still rejected. The index must reach toward the thumb
+instead of being fully tucked into a fist. This specific closed-hand shape can
+override a canned fist label; an open-hand/OK-sign pinch is not accepted.
+UNKNOWN represents uncertain/unsupported poses; it is not forced to OPEN_PALM.
+
+Each slot confirms a candidate over 40 ms. A tracked hand can bridge short unknown
+classifications or a pending switch for at most 100 ms since the last support,
+with decaying confidence. Missing hands clear immediately, including COASTING.
+The confirmation can bridge a brief score dip instead of restarting on every
+uncertain frame. This adds bounded delay, which should be measured
+before designing gesture timing windows. Labels are continuous observations, not
+one-shot events: Godot must decide how and when they activate a game action.
+
+**Live validation required:** FIST is the model's general closed-fist class.
+Test your intended knuckles-and-thumb-facing-camera pose; exact facing direction
+is not enforced by this model. PINCH estimates fingertip proximity, not physical
+contact, and its thresholds may need tuning for your hands/camera. Player ownership
+is still unresolved, so bystander hands can also produce gesture observations.
+See the [gesture checks](vision/LIVE_CAMERA_CHECKLIST.md#gestures).
+
+For tuning, use `python vision/vertical_demo.py --debug --gesture-debug`
+(or `uv run vision/vertical_demo.py --debug --gesture-debug`). It enables gestures
+and prints model label/score, normalized pinch gap, estimated 3D gap, extended
+finger count, curled supporting fingers (`curled=3/3` for pinch), index reach,
+raw decision, and final stabilized label four times a second.
+`hand missing` means tracking/association failed, rather than just classification.
+Green rings in the camera view mark thumb/index tips, connected by a line;
+amber rings mark the middle, ring, and little fingertips.
+Use these readings to diagnose remaining failures; thresholds have synthetic
+regression coverage but still require your live-camera retest.
+
+With `--gestures`, UDP adds `gesture` and `gesture_conf` to each hand. Share this
+optional extension with the Godot teammate; existing receivers must ignore fields
+they do not use. No game code or default port was changed. The cross-team
+5005/9000 mismatch remains pending; use `--port 9000` when targeting the current game.
+
+Reference: [MediaPipe Gesture Recognizer](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/python).
+
+### Position-only mode
+
 ```bash
 python vision/vertical_demo.py
 # or, without activating: uv run vision/vertical_demo.py
@@ -255,7 +332,7 @@ python -m unittest discover -s vision -v
 ```
 
 These need no webcam and no model file, so they are the fastest way to confirm a
-fresh setup on any platform. All 21 should pass.
+fresh setup on any platform. All 52 should pass.
 
 Reference: [MediaPipe Hand Landmarker Python guide](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python).
 

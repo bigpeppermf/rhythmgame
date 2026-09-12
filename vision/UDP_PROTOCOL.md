@@ -42,6 +42,37 @@ retransmission, camera image, or game event is sent. Godot owns judgment/scoring
 
 ## Receiver behavior for the Godot teammate
 
+### Optional gesture extension
+
+`vertical_demo.py --gestures` adds two fields per hand:
+
+```json
+{"gesture": "FIST", "gesture_conf": 0.91}
+```
+
+Allowed labels: OPEN_PALM (normal input), FIST, THUMBS_UP, PINCH, and UNKNOWN
+(uncertain/unrecognized/missing, not an action). Plain mode has neither field.
+This is an opt-in CV extension; game-side gesture handling still needs integration.
+Default ports remain unchanged (vision 5005; game currently 9000); use the CLI
+override until the team agrees which default should move.
+
+`gesture_conf` is separate from `conf`: it describes model or geometric evidence
+for the label and decays while briefly bridging uncertain classifications. It is
+not a calibrated probability and scores are not directly comparable across classes.
+UNKNOWN has gesture_conf=0. COASTING and LOST always carry UNKNOWN, even though
+COASTING retains position. New gestures confirm over 40 ms; uncertain classifications
+can retain the previous gesture for at most 100 ms since its last support only
+while the hand is still detected. Pinch has separate entry/release thresholds.
+
+FIST does not certify a specific camera-facing orientation. PINCH estimates
+thumb/index-tip proximity with the middle, ring, and little fingers loosely curled and
+the index reaching toward the thumb (a closed-hand pinch). An open-hand OK sign
+is not PINCH. Both need real-camera validation. These fields report
+poses only; they do not report hits, presses, or rising-edge events. Godot owns
+action transitions and judgment, and must also clear gestures on packet timeout.
+
+### Position and state reception
+
 1. Bind a `PacketPeerUDP` to port 5005 on 127.0.0.1 for same-computer testing.
 2. Each game frame, read queued datagrams, decode UTF-8, parse JSON, and validate
    the expected fields. Read raw packet bytes, not Godot's Variant wire format.

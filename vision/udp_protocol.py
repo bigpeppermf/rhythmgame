@@ -3,6 +3,7 @@
 import json
 from math import isfinite
 import socket
+from gestures import VALID_GESTURES
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5005
@@ -18,7 +19,7 @@ def port_number(value):
 PROTOCOL_VERSION = 1
 
 
-def build_packet(seq, t_capture, fps, hands):
+def build_packet(seq, t_capture, fps, hands, include_gestures=False):
     packet = {
         # Stated explicitly so a future change can be detected rather than
         # guessed at. Receivers treat an absent "v" as 1, since that is the
@@ -34,6 +35,10 @@ def build_packet(seq, t_capture, fps, hands):
             for hand in hands
         ],
     }
+    if include_gestures:
+        for item, hand in zip(packet["hands"], hands):
+            item["gesture"] = hand.gesture.label
+            item["gesture_conf"] = hand.gesture.confidence
     validate_packet(packet)
     return packet
 
@@ -68,6 +73,15 @@ def validate_packet(packet):
             raise ValueError("x/y/conf must be normalized to [0,1].")
         if hand["state"] == "LOST" and hand["conf"] != 0:
             raise ValueError("LOST observations must have zero confidence.")
+        if "gesture" in hand or "gesture_conf" in hand:
+            if hand.get("gesture") not in VALID_GESTURES:
+                raise ValueError("Unknown gesture label.")
+            if not number(hand.get("gesture_conf")) or not 0 <= hand["gesture_conf"] <= 1:
+                raise ValueError("gesture_conf must be normalized to [0,1].")
+            if hand["state"] != "TRACKED" and hand["gesture"] != "UNKNOWN":
+                raise ValueError("Missing hands cannot carry a fresh gesture.")
+            if hand["gesture"] == "UNKNOWN" and hand["gesture_conf"] != 0:
+                raise ValueError("UNKNOWN gestures must have zero confidence.")
     if sorted(slots) != [0, 1]:
         raise ValueError("Expected distinct slots 0 and 1.")
 
@@ -81,7 +95,7 @@ def decode_packet(data):
 class UdpHandSender:
     """Send each snapshot once, without waiting or retrying old observations."""
 
-    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT):
+    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, include_gestures=False):
         # Resolve once at startup, not during the camera loop.
         self.destination = (socket.gethostbyname(host), port_number(port))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -89,9 +103,10 @@ class UdpHandSender:
         self.seq = 0
         self.dropped = 0
         self.last_error = None
+        self.include_gestures = include_gestures
 
     def send(self, hands, t_capture, fps):
-        packet = build_packet(self.seq, t_capture, fps, hands)
+        packet = build_packet(self.seq, t_capture, fps, hands, self.include_gestures)
         data = json.dumps(packet, allow_nan=False, separators=(",", ":")).encode("utf-8")
         self.seq += 1  # Includes failed attempts so gaps remain visible.
         try:
