@@ -20,7 +20,7 @@ class Palm:
 
 
 def extract_palms(result):
-    """Average the rigid palm landmarks; fingertips do not drive the cursor."""
+    """Average palm landmarks and correct labels for the mirrored demo input."""
     palms = []
     for landmarks, categories in zip(result.hand_landmarks, result.handedness):
         if len(landmarks) != 21 or not categories:
@@ -35,7 +35,10 @@ def extract_palms(result):
                        for axis in (0, 1))
         if not all(0 <= value <= 1 for value in center):
             continue
-        palms.append(Palm(center, category.category_name, category.score, points))
+        # The live demo showed opposite anatomical labels after its input flip.
+        # Correct once here, before continuity tracking and state assignment.
+        handedness = {"Left": "Right", "Right": "Left"}[category.category_name]
+        palms.append(Palm(center, handedness, category.score, points))
     return palms
 
 
@@ -82,7 +85,7 @@ class PalmSlots:
 
 
 class HandDetector:
-    """Accept mirrored BGR frames so model labels identify anatomical hands."""
+    """Accept mirrored BGR frames; extract_palms corrects left/right labels."""
 
     def __init__(self, model_path=DEFAULT_MODEL):
         try:
