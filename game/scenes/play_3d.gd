@@ -218,4 +218,9 @@ func _update_hud() -> void:
 		% HandState.source_name())
 	if _preview != null:
 		lines.append(_preview.status())
+	var g0: HandObservation = HandState.hands[0]
+	var g1: HandObservation = HandState.hands[1]
+	if g0.gesture != &"UNKNOWN" or g1.gesture != &"UNKNOWN":
+		lines.append("gesture: L %s %.2f   R %s %.2f" %
+			[g0.gesture, g0.gesture_conf, g1.gesture, g1.gesture_conf])
 	_hud.text = "\n".join(lines)

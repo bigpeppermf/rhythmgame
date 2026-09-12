@@ -13,12 +13,19 @@ from udp_protocol import DEFAULT_HOST, DEFAULT_PORT, UdpHandSender  # noqa: E402
 
 
 @dataclass
+class Gesture:
+    label: str = "UNKNOWN"
+    confidence: float = 0.0
+
+
+@dataclass
 class Hand:
     slot: int
     position: tuple
     velocity: tuple
     confidence: float
     state: str
+    gesture: Gesture = None
 
 
 LANE = (0.29, 0.71)
@@ -32,7 +39,13 @@ def main():
     ap.add_argument("--seconds", type=float, default=0.0, help="0 = run forever")
     ap.add_argument("--preview", action="store_true",
                     help="also stream a synthetic self-view on the preview port")
+    ap.add_argument("--gestures", action="store_true",
+                    help="include gesture fields, cycling through the valid labels")
     args = ap.parse_args()
+    labels = []
+    if args.gestures:
+        from gestures import VALID_GESTURES
+        labels = sorted(l for l in VALID_GESTURES if l != "UNKNOWN")
 
     preview = None
     if args.preview:
@@ -41,7 +54,7 @@ def main():
         preview = PreviewSender(args.host)
         print(f"-> preview on :{preview.destination[1]}")
 
-    sender = UdpHandSender(args.host, args.port)
+    sender = UdpHandSender(args.host, args.port, include_gestures=args.gestures)
     print(f"-> {sender.destination[0]}:{sender.destination[1]} using vision/udp_protocol.py")
     period, t0 = 1.0 / args.fps, time.perf_counter()
     prev = [0.5, 0.5]
@@ -55,7 +68,8 @@ def main():
             for s in (0, 1):
                 # Counter-phase sweeps so both lanes are exercised at once.
                 y = 0.5 + 0.34 * sin(tau * 0.45 * t + (0.0 if s == 0 else 3.14159))
-                hands.append(Hand(s, (LANE[s], y), (0.0, (y - prev[s]) / period), 0.95, "TRACKED"))
+                g = Gesture(labels[int(t) % len(labels)], 0.9) if labels else Gesture()
+                hands.append(Hand(s, (LANE[s], y), (0.0, (y - prev[s]) / period), 0.95, "TRACKED", g))
                 prev[s] = y
             # Hand data first, always. The preview gets whatever is left.
             sender.send(hands, now, args.fps)

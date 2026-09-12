@@ -15,6 +15,11 @@ var state: State = State.LOST
 ## Producer-side timestamp of the frame this came from. Only ever compared to
 ## other t_capture values — never converted into song time.
 var t_capture: float = 0.0
+## Optional. The tracker sends these only when run with --gestures; otherwise
+## they stay UNKNOWN / 0. Not judged yet - carried so a note kind can key off
+## it later without touching the input path again.
+var gesture: StringName = &"UNKNOWN"
+var gesture_conf: float = 0.0
 
 
 func _init(p_slot: int = 0) -> void:

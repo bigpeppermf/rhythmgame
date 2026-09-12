@@ -34,6 +34,8 @@ func _process(delta: float) -> void:
 		print("hand0 pos=%s conf=%.2f state=%d" %
 			[HandState.hands[0].pos, HandState.hands[0].conf, HandState.hands[0].state])
 		print("hand1 pos=%s conf=%.2f" % [HandState.hands[1].pos, HandState.hands[1].conf])
+		print("gesture: L %s %.2f   R %s %.2f" % [HandState.hands[0].gesture,
+			HandState.hands[0].gesture_conf, HandState.hands[1].gesture, HandState.hands[1].gesture_conf])
 		print("moving=%s" % _moved)
 		print("preview: connected=%s frames=%d fps=%.0f size=%s" % [
 			_preview.connected, _preview.frames, _preview.fps,

@@ -93,6 +93,10 @@ func _apply(incoming: Array, hands: Array) -> void:
 		h.conf = float(entry.get("conf", 0.0))
 		h.state = HandObservation.state_from_string(str(entry.get("state", "LOST")))
 		h.t_capture = float(entry.get("t_capture", 0.0))
+		# Present only when the tracker runs with --gestures. Absent means
+		# unknown, which is exactly what a sender without the feature means.
+		h.gesture = StringName(str(entry.get("gesture", "UNKNOWN")))
+		h.gesture_conf = float(entry.get("gesture_conf", 0.0))
 
 
 func _mark_all_lost(hands: Array) -> void:
@@ -100,6 +104,8 @@ func _mark_all_lost(hands: Array) -> void:
 		h.conf = 0.0
 		h.state = HandObservation.State.LOST
 		h.vel = Vector2.ZERO
+		h.gesture = &"UNKNOWN"
+		h.gesture_conf = 0.0
 
 
 func _track_rate(now: float) -> void:

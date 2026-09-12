@@ -69,6 +69,12 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 | `vx`, `vy` | float | Velocity in normalized units per second. Used for extrapolation between packets. |
 | `conf` | float | `[0,1]`. The game fades the cursor below ~0.4 and stops judging at 0. |
 | `state` | string | `TRACKED` \| `COASTING` \| `LOST` |
+| `gesture` | string | *Optional.* Sent only when the tracker runs with `--gestures`. One of the labels in `vision/gestures.py` (`VALID_GESTURES`), or `UNKNOWN`. A non-`TRACKED` hand is always `UNKNOWN`. |
+| `gesture_conf` | float | *Optional, paired with `gesture`.* `[0,1]`; `UNKNOWN` carries `0`. |
+
+The game reads the gesture fields into `HandObservation` and shows them on the
+HUD, but does not judge on them yet. Absent fields mean `UNKNOWN`, which is
+exactly what a sender without the feature means, so older senders stay valid.
 
 ### Rules both sides rely on
 
