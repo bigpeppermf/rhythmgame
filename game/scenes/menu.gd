@@ -5,10 +5,11 @@ extends Control
 
 signal play_pressed
 signal calibrate_pressed
+signal edit_pressed
 
 var _font: Font
 var _sel := 0
-const ITEMS := ["Play", "Calibrate", "Quit"]
+const ITEMS := ["Play", "Calibrate", "Edit chart", "Quit"]
 
 
 func _ready() -> void:
@@ -38,7 +39,8 @@ func _activate() -> void:
 	match _sel:
 		0: play_pressed.emit()
 		1: calibrate_pressed.emit()
-		2: get_tree().quit()
+		2: edit_pressed.emit()
+		3: get_tree().quit()
 
 
 func _draw() -> void:

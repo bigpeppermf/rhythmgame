@@ -4,6 +4,11 @@ extends Node
 ## Holds two HandObservations and a swappable source. Gameplay reads from here
 ## and never learns whether the numbers came from a camera or a mouse.
 ##
+## The UDP source is always bound, even while the mouse mock is driving. The
+## moment real packets arrive it takes over, so starting the tracker is the
+## whole setup - nobody has to remember a key. Pressing U still switches by
+## hand, and doing so turns the automatic switch off for the session.
+##
 ## Autoloaded as `HandState` (see project.godot).
 
 signal source_changed(name: String)
@@ -18,29 +23,45 @@ const MAX_EXTRAPOLATION := 0.05
 
 var hands: Array[HandObservation] = []
 var source: HandSource = null
+## Switch to the camera automatically when its packets appear.
+var auto_switch: bool = true
+## True once any hand has reported a real gesture. Until then, notes that ask
+## for a gesture do not enforce it: a tracker run without --gestures, or the
+## mouse mock, would otherwise cap every such note for a reason the player
+## cannot see.
+var gestures_seen: bool = false
 
+var _udp: UdpHandSource
+var _mock: MockHandSource
+var _probe: Array[HandObservation] = []
 var _sample_age: Array[float] = [0.0, 0.0]
 
 
 func _ready() -> void:
 	hands = [HandObservation.new(SLOT_LEFT), HandObservation.new(SLOT_RIGHT)]
-	use_mock()
+	_probe = [HandObservation.new(SLOT_LEFT), HandObservation.new(SLOT_RIGHT)]
+	_udp = UdpHandSource.new()
+	add_child(_udp)
+	_mock = MockHandSource.new()
+	add_child(_mock)
+	_activate(_mock)
 	process_priority = -100  # read input before anything consumes it
 
 
 func use_mock() -> void:
-	_swap(MockHandSource.new())
+	auto_switch = false
+	_activate(_mock)
 
 
 func use_udp() -> void:
-	_swap(UdpHandSource.new())
+	auto_switch = false
+	_activate(_udp)
 
 
-func _swap(next: HandSource) -> void:
-	if source != null:
-		source.queue_free()
+func _activate(next: HandSource) -> void:
+	if source == next:
+		return
 	source = next
-	add_child(source)
 	source_changed.emit(source.source_name())
 
 
@@ -48,8 +69,21 @@ func _process(delta: float) -> void:
 	if source == null:
 		return
 
+	# Keep draining the socket even when the mock is driving, so packets never
+	# back up and so we notice the moment a tracker starts talking.
+	if source != _udp and auto_switch:
+		_udp.poll(_probe)
+		if _udp.connected:
+			_activate(_udp)
+
 	var before: Array[float] = [hands[0].t_capture, hands[1].t_capture]
 	source.poll(hands)
+
+	if not gestures_seen:
+		for h in hands:
+			if h.gesture != &"UNKNOWN":
+				gestures_seen = true
+				break
 
 	# Age each sample. A source running at 60Hz feeding a 144Hz renderer leaves
 	# us holding the same observation for two or three frames; without this the
@@ -64,7 +98,7 @@ func _process(delta: float) -> void:
 ## Where to draw the cursor: the last observed position, carried forward by its
 ## velocity for however long we have been holding that sample.
 ##
-## This adds no information — it is purely perceptual. But a smoothly moving
+## This adds no information - it is purely perceptual. But a smoothly moving
 ## cursor reads as far more responsive than a stepping one, and responsiveness
 ## is a feeling rather than a measurement.
 func cursor(slot: int) -> Vector2:
@@ -82,4 +116,9 @@ func any_usable() -> bool:
 
 
 func source_name() -> String:
-	return source.source_name() if source != null else "none"
+	if source == null:
+		return "none"
+	var n := source.source_name()
+	if source == _mock and auto_switch:
+		n += "  (camera auto-detect on :%d)" % UdpHandSource.PORT
+	return n

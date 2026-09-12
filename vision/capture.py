@@ -1,91 +1,92 @@
-"""Threaded camera capture.
+"""Single-slot webcam capture: replace old frames instead of queueing them."""
 
-This module exists because of one bug that costs more latency than every
-algorithm choice combined: cv2.VideoCapture queues frames internally. If your
-processing loop is even slightly slower than the camera's frame rate, you fall
-behind the queue and stay behind - permanently. You end up decoding a frame
-captured 4 frames ago, which at 30fps is 130ms of latency you added for free,
-and nothing in your code looks wrong.
-
-The fix is to read continuously on a dedicated thread that overwrites a single
-"latest frame" slot. The main loop always gets the newest frame and never
-inherits a backlog. Frames that arrive while the main loop is busy are simply
-dropped, which is correct: a stale frame is better than a late one.
-"""
-import threading
-import time
-
-import cv2
+from dataclasses import dataclass
+from threading import Condition, Event, Thread
+from time import perf_counter
 
 
-class Camera:
-    def __init__(self, index=0, width=640, height=480, fps=60, fourcc="MJPG",
-                 exposure=None, backend=cv2.CAP_V4L2):
-        self.cap = cv2.VideoCapture(index, backend)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"could not open camera {index}")
+@dataclass(frozen=True)
+class CapturedFrame:
+    sequence: int
+    image: object
+    t_capture: float
+    fps: float
 
-        # MJPG first: the default YUYV format saturates USB bandwidth and often
-        # caps the camera at 30fps (or worse at higher resolutions). This single
-        # line is frequently the difference between 30 and 60fps.
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, fps)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-        if exposure is not None:
-            # Autoexposure is a latency AND blur amplifier: in dim light it
-            # lengthens exposure time, which both slows frame delivery and
-            # smears a fast-moving hand into something untrackable.
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)  # V4L2 manual mode
-            self.cap.set(cv2.CAP_PROP_EXPOSURE, exposure)
+class LatestFrameCapture:
+    """Take ownership of an opened/configured VideoCapture and start reading.
 
-        self._frame = None
-        self._t_capture = 0.0
-        self._seq = 0
-        self._lock = threading.Lock()
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+    Only the worker calls read/release. The consumer receives a stable frame
+    reference; publishing another frame never modifies one already handed out.
+    """
+
+    def __init__(self, camera):
+        self._camera = camera
+        self._condition = Condition()
+        self._stop = Event()
+        self._latest = None
+        self._error = None
+        self._finished = False
+        # A camera driver can hang inside native read(). Do not let such a driver
+        # keep the Python process alive after a bounded close/join.
+        self._thread = Thread(target=self._capture, name="webcam-capture", daemon=True)
         self._thread.start()
 
-    def _loop(self):
-        while not self._stop.is_set():
-            ok, frame = self.cap.read()
-            # Stamp at capture, never at send. Stamping later folds all of your
-            # processing variance into the number and makes it useless for
-            # jitter measurement downstream.
-            t = time.perf_counter()
-            if not ok:
-                time.sleep(0.005)
-                continue
-            with self._lock:
-                self._frame = frame
-                self._t_capture = t
-                self._seq += 1
+    def _capture(self):
+        sequence, count, fps = 0, 0, 0.0
+        start = perf_counter()
+        try:
+            while not self._stop.is_set():
+                ok, image = self._camera.read()
+                t_capture = perf_counter()  # Immediately after read, before copying.
+                if self._stop.is_set():
+                    break
+                if not ok:
+                    raise RuntimeError("Camera stopped delivering frames.")
+                sequence += 1
+                count += 1
+                if t_capture - start >= 1.0:
+                    fps = count / (t_capture - start)
+                    count, start = 0, t_capture
+                frame = CapturedFrame(sequence, image.copy(), t_capture, fps)
+                with self._condition:
+                    self._latest = frame
+                    self._condition.notify_all()
+        except Exception as error:
+            with self._condition:
+                self._error = error
+        finally:
+            try:
+                self._camera.release()
+            finally:
+                with self._condition:
+                    self._finished = True
+                    self._condition.notify_all()
 
-    def read(self):
-        """Newest frame as (seq, t_capture, frame), or (0, 0.0, None)."""
-        with self._lock:
-            if self._frame is None:
-                return 0, 0.0, None
-            return self._seq, self._t_capture, self._frame
+    def get_latest(self, after_sequence=0, timeout=0.02):
+        """Return a newer frame once, or None on timeout/close; propagate failure."""
+        with self._condition:
+            self._condition.wait_for(
+                lambda: self._error is not None or self._finished or self._stop.is_set()
+                or (self._latest is not None and self._latest.sequence > after_sequence),
+                timeout=timeout,
+            )
+            if self._error is not None:
+                raise RuntimeError(f"Capture failed: {self._error}") from self._error
+            if self._stop.is_set() or self._finished:
+                return None
+            if self._latest is not None and self._latest.sequence > after_sequence:
+                return self._latest
+            return None
 
-    def settings(self):
-        """What the camera actually accepted. Drivers silently refuse requests,
-        so always read back rather than trusting your set() calls."""
-        g = self.cap.get
-        cc = int(g(cv2.CAP_PROP_FOURCC))
-        return {
-            "width": int(g(cv2.CAP_PROP_FRAME_WIDTH)),
-            "height": int(g(cv2.CAP_PROP_FRAME_HEIGHT)),
-            "fps_reported": g(cv2.CAP_PROP_FPS),
-            "fourcc": "".join(chr((cc >> 8 * i) & 0xFF) for i in range(4)),
-            "exposure": g(cv2.CAP_PROP_EXPOSURE),
-            "auto_exposure": g(cv2.CAP_PROP_AUTO_EXPOSURE),
-        }
+    def close(self, timeout=1.0):
+        """Stop and join; False means the native driver is still stuck in read().
 
-    def close(self):
+        Never release the camera concurrently with a native read; the worker
+        releases it when read returns. Repeated close calls are safe.
+        """
         self._stop.set()
-        self._thread.join(timeout=1.0)
-        self.cap.release()
+        with self._condition:
+            self._condition.notify_all()
+        self._thread.join(timeout)
+        return not self._thread.is_alive()

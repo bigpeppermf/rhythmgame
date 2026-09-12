@@ -11,16 +11,19 @@ extends HandSource
 ##   TAB     switch which hand the mouse drives
 ##   M       toggle mirror mode (both hands from one mouse)
 ##   L       hold to simulate losing tracking
+##   1-4     fake a gesture (open palm, fist, thumbs up, pinch); 0 clears
 
 var mirror: bool = true
 var active_slot: int = 0
+var fake_gesture: StringName = &"UNKNOWN"
 
 var _prev_pos: Array[Vector2] = [Vector2(0.5, 0.5), Vector2(0.5, 0.5)]
 var _seeded: bool = false
 
 
 func source_name() -> String:
-	return "mock (mouse)%s" % (" mirrored" if mirror else "")
+	return "mock (mouse)%s%s" % [" mirrored" if mirror else "",
+		"" if fake_gesture == &"UNKNOWN" else "  gesture %s" % fake_gesture]
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -29,6 +32,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_TAB: active_slot = 1 - active_slot
 		KEY_M: mirror = not mirror
+		KEY_0: fake_gesture = &"UNKNOWN"
+		KEY_1: fake_gesture = &"OPEN_PALM"
+		KEY_2: fake_gesture = &"FIST"
+		KEY_3: fake_gesture = &"THUMBS_UP"
+		KEY_4: fake_gesture = &"PINCH"
 
 
 func poll(hands: Array) -> void:
@@ -62,6 +70,8 @@ func poll(hands: Array) -> void:
 		h.conf = 0.0 if lost else 1.0
 		h.state = HandObservation.State.LOST if lost else HandObservation.State.TRACKED
 		h.t_capture = now
+		h.gesture = &"UNKNOWN" if lost else fake_gesture
+		h.gesture_conf = 0.0 if (lost or fake_gesture == &"UNKNOWN") else 1.0
 		_prev_pos[slot] = target
 
 	_seeded = true

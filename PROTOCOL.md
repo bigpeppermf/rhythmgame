@@ -13,7 +13,8 @@ Change this file only by agreement, and bump `v` when you do.
 
 ## Transport
 
-- **UDP**, `127.0.0.1:9000`, vision → game, one datagram per camera frame
+- **UDP**, `127.0.0.1:5005`, vision → game, one datagram per camera frame
+- Camera preview (optional, separate socket): `127.0.0.1:5006` — see below
 - **Fire and forget.** No handshake, no acknowledgement, no retries
 - The game **drains its socket every frame and keeps only the newest packet**
 
@@ -53,7 +54,7 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `v` | int | Protocol version. Game ignores packets whose `v` it does not know. |
+| `v` | int | Protocol version. An absent `v` means 1 — the version that predates the field — so a sender that omits it is still accepted. |
 | `seq` | int | Monotonic frame counter. Lets the game detect drops and reordering. |
 | `t_capture` | float | `time.perf_counter()` sampled **immediately after `cap.read()` returns**, never at send time. |
 | `fps` | float | Observed capture rate, for the debug overlay. |
@@ -64,10 +65,22 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 | Field | Type | Meaning |
 |---|---|---|
 | `slot` | int | `0` = left, `1` = right, **as they appear on the game screen**. Stable across frames — see Slot Identity. |
-| `x`, `y` | float | Normalized position after calibration. `[0,1]` is the play area; up to `[-0.1, 1.1]` is allowed overshoot. `x=0` is screen-left, `y=0` is screen-**top**. |
+| `x`, `y` | float | Normalized position after calibration. **The game currently judges `y` only** — each hand has one vertical lane, so `x` says nothing the slot does not already say. Send it anyway; it is cheap and a future layout may use it. Normalized position after calibration. `[0,1]` is the play area; up to `[-0.1, 1.1]` is allowed overshoot. `x=0` is screen-left, `y=0` is screen-**top**. |
 | `vx`, `vy` | float | Velocity in normalized units per second. Used for extrapolation between packets. |
 | `conf` | float | `[0,1]`. The game fades the cursor below ~0.4 and stops judging at 0. |
 | `state` | string | `TRACKED` \| `COASTING` \| `LOST` |
+| `gesture` | string | *Optional.* Sent only when the tracker runs with `--gestures`. One of the labels in `vision/gestures.py` (`VALID_GESTURES`), or `UNKNOWN`. A non-`TRACKED` hand is always `UNKNOWN`. |
+| `gesture_conf` | float | *Optional, paired with `gesture`.* `[0,1]`; `UNKNOWN` carries `0`. |
+
+The game reads the gesture fields into `HandObservation`. A chart note may
+carry `"gesture"` (one of the labels above); the Judge treats it like
+position — satisfied if the hand held that shape on **any** frame while inside
+the note's window, so a one-frame classifier flicker cannot fail it. Right
+place and time but the wrong shape caps the verdict at GOOD
+(`Judge.WRONG_GESTURE_CAP`). If the input has never reported a gesture in the
+session (mouse mock, or a tracker run without `--gestures`), requirements are
+ignored and the HUD says so. Absent fields mean `UNKNOWN`, so older senders
+stay valid.
 
 ### Rules both sides rely on
 
@@ -107,6 +120,31 @@ doesn't: the model reasons about one isolated frame, we know the hand did not
 teleport since 16ms ago. Use the label only to break ties when re-acquiring
 both hands from nothing.
 
+## Camera preview (optional)
+
+A second, entirely separate channel: `127.0.0.1:5006`, one datagram per frame,
+**raw JPEG bytes, no header**. Newest wins — nothing to reassemble, nothing to
+acknowledge.
+
+It exists so the player can see themselves while they play. It is *not* input.
+
+**Why a separate socket.** Hand observations have a latency budget; a JPEG does
+not. Sharing a socket would put a multi-kilobyte payload on the one path that
+has to stay fast. Keeping them apart means the preview can be slow, lossy or
+missing without gameplay noticing — and it means the vision module can send the
+hand packet first every frame and give the preview only what is left over.
+
+| | |
+|---|---|
+| Rate | ~15 fps (hands run at 60) |
+| Size | 224 px wide, JPEG q55 — a few KB |
+| Encode cost | ~0.12 ms/frame, about 0.2% of one core |
+| Frame | already mirrored, so it reads as a mirror |
+
+Enable with `python3 vision/vertical_demo.py --preview`. The game shows it in
+the gap between the two panels, and `C` toggles it. If nothing arrives, nothing
+is drawn.
+
 ## Timebase
 
 The two processes do **not** share a clock, and they don't need to.
@@ -123,5 +161,10 @@ song time. All fixed pipeline delay is absorbed by a single calibrated
 python3 tools/mock_sender.py --pattern circle
 
 # Vision side: no game needed
-python3 -m vision.main --debug --no-emit
+uv run vision/vertical_demo.py --debug --no-udp
+
+# Vision side: watch the packets without Godot
+uv run vision/udp_receiver.py
 ```
+
+See the [README](README.md) for setup on macOS, Linux and Windows.

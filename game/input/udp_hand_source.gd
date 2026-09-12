@@ -7,7 +7,8 @@ extends HandSource
 ## backlog means we are rendering the past, and a stale frame is always
 ## better than a late one.
 
-const PORT := 9000
+## Must match vision/udp_protocol.py DEFAULT_PORT.
+const PORT := 5005
 const PROTOCOL_VERSION := 1
 ## No packet for this long and we consider the producer gone.
 const TIMEOUT := 0.5
@@ -59,7 +60,10 @@ func poll(hands: Array) -> void:
 			_mark_all_lost(hands)
 		return
 
-	if int(newest.get("v", -1)) != PROTOCOL_VERSION:
+	# A packet with no "v" is v1 by definition - that is the version that
+	# predates the field. Rejecting it would mean the game silently ignores a
+	# sender that is, in every other respect, speaking the protocol correctly.
+	if int(newest.get("v", PROTOCOL_VERSION)) != PROTOCOL_VERSION:
 		if not _bad_version_warned:
 			push_error("UdpHandSource: protocol v%s, expected v%d" %
 				[newest.get("v", "?"), PROTOCOL_VERSION])
@@ -89,6 +93,10 @@ func _apply(incoming: Array, hands: Array) -> void:
 		h.conf = float(entry.get("conf", 0.0))
 		h.state = HandObservation.state_from_string(str(entry.get("state", "LOST")))
 		h.t_capture = float(entry.get("t_capture", 0.0))
+		# Present only when the tracker runs with --gestures. Absent means
+		# unknown, which is exactly what a sender without the feature means.
+		h.gesture = StringName(str(entry.get("gesture", "UNKNOWN")))
+		h.gesture_conf = float(entry.get("gesture_conf", 0.0))
 
 
 func _mark_all_lost(hands: Array) -> void:
@@ -96,6 +104,8 @@ func _mark_all_lost(hands: Array) -> void:
 		h.conf = 0.0
 		h.state = HandObservation.State.LOST
 		h.vel = Vector2.ZERO
+		h.gesture = &"UNKNOWN"
+		h.gesture_conf = 0.0
 
 
 func _track_rate(now: float) -> void:

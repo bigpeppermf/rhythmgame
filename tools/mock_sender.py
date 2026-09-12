@@ -38,7 +38,7 @@ def positions(pattern, t):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int, default=9000)
+    ap.add_argument("--port", type=int, default=5005)
     ap.add_argument("--fps", type=float, default=60.0)
     ap.add_argument("--pattern", default="circle",
                     choices=["circle", "sweep", "static"])

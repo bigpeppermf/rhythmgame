@@ -19,7 +19,7 @@ func _ready() -> void:
 func _test_scenes_instantiate() -> void:
 	for path in ["res://scenes/menu.tscn", "res://scenes/calibrate.tscn",
 			"res://scenes/results.tscn", "res://scenes/play_3d.tscn",
-			"res://scenes/main.tscn"]:
+			"res://scenes/editor.tscn", "res://scenes/main.tscn"]:
 		var packed: PackedScene = load(path)
 		_check(packed != null, "%s loads" % path.get_file())
 		if packed == null:
@@ -37,7 +37,8 @@ func _test_scenes_instantiate() -> void:
 ## as a crash mid-demo.
 func _test_signals_exist() -> void:
 	var expect := {
-		"res://scenes/menu.tscn": ["play_pressed", "calibrate_pressed"],
+		"res://scenes/menu.tscn": ["play_pressed", "calibrate_pressed", "edit_pressed"],
+		"res://scenes/editor.tscn": ["finished", "playtest_requested"],
 		"res://scenes/play_3d.tscn": ["song_finished", "quit_to_menu"],
 		"res://scenes/calibrate.tscn": ["finished"],
 		"res://scenes/results.tscn": ["finished"],
@@ -73,6 +74,18 @@ func _test_flow_transitions() -> void:
 	main._show_calibrate()
 	await get_tree().process_frame
 	_check(main._current.has_signal("finished"), "menu -> calibrate")
+
+	main._show_editor()
+	await get_tree().process_frame
+	_check(main._current.has_signal("playtest_requested"), "menu -> editor")
+	var edited: Chart = main._current.chart
+	main._playtest(edited)
+	await get_tree().process_frame
+	_check(main._current.chart == edited, "editor -> playtest uses the in-memory chart")
+	main._after_play()
+	await get_tree().process_frame
+	_check(main._current.has_signal("playtest_requested") and main._current.chart == edited,
+		"playtest returns to the editor with the same chart")
 
 	main.queue_free()
 	remove_child(main)

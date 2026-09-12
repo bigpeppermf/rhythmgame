@@ -1,4 +1,3 @@
-opencv-python>=4.9
-numpy>=1.26
-# Upgrade path only - not needed for the colored-object tracker.
-# mediapipe>=0.10
+mediapipe==0.10.35
+opencv-contrib-python>=4.10,<6
+numpy>=2,<3

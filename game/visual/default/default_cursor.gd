@@ -4,23 +4,21 @@ extends CursorView
 ## Opacity follows tracking confidence, so degraded input is visible rather
 ## than silently wrong.
 
-const RADIUS := 0.42
-
 var _mesh: MeshInstance3D
 var _color: Color
 
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
-	var s := SphereMesh.new()
-	s.radius = RADIUS
-	s.height = RADIUS * 2.0
-	_mesh.mesh = s
 	add_child(_mesh)
 
 
-func configure(slot: int, skin: GameSkin) -> void:
-	_color = skin.slot_color(slot)
+func configure(_slot: int, skin: GameSkin) -> void:
+	_color = skin.cursor_color
+	var s := SphereMesh.new()
+	s.radius = skin.cursor_radius
+	s.height = skin.cursor_radius * 2.0
+	_mesh.mesh = s
 
 
 func update_view(confidence: float, state: HandObservation.State) -> void:
