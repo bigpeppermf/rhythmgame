@@ -26,6 +26,9 @@ var score := ScoreState.new()
 var _hud: Label
 var _cam: Camera3D
 var _outro := -1.0
+var _preview: CameraPreview
+var _preview_rect: TextureRect
+var _preview_frame: Panel
 
 
 func _ready() -> void:
@@ -39,6 +42,7 @@ func _ready() -> void:
 	field.skin = skin
 	add_child(field)
 	_build_hud()
+	_build_preview(skin)
 
 	judge = Judge.new()
 	add_child(judge)
@@ -81,11 +85,66 @@ func _build_hud() -> void:
 	layer.add_child(_hud)
 
 
+## The self-view sits in the gap between the two panels - the one part of the
+## frame the game never draws in - so it costs no gameplay real estate.
+func _build_preview(skin: GameSkin) -> void:
+	_preview = CameraPreview.new()
+	add_child(_preview)
+	if not skin.show_preview:
+		return
+
+	var layer := CanvasLayer.new()
+	layer.layer = -1        # behind the HUD text
+	add_child(layer)
+
+	_preview_frame = Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(1)
+	sb.border_color = skin.preview_border
+	sb.set_corner_radius_all(3)
+	_preview_frame.add_theme_stylebox_override("panel", sb)
+	_preview_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_preview_frame)
+
+	_preview_rect = TextureRect.new()
+	_preview_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_preview_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview_rect.modulate = Color(1, 1, 1, skin.preview_opacity)
+	_preview_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_preview_rect)
+
+
+func _layout_preview() -> void:
+	if _preview_rect == null:
+		return
+	var vis: bool = _preview.texture != null
+	_preview_rect.visible = vis
+	_preview_frame.visible = vis
+	if not vis:
+		return
+	var skin: GameSkin = field.skin
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	var h: float = screen.y * skin.preview_height
+	var aspect: float = float(_preview.texture.get_width()) / maxf(_preview.texture.get_height(), 1)
+	var size := Vector2(h * aspect, h)
+	var at := Vector2((screen.x - size.x) * 0.5, (screen.y - size.y) * 0.5)
+	_preview_rect.position = at
+	_preview_rect.size = size
+	_preview_rect.texture = _preview.texture
+	_preview_frame.position = at
+	_preview_frame.size = size
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	match event.keycode:
 		KEY_SPACE: _start()
+		KEY_C:
+			if _preview_rect != null:
+				_preview_rect.visible = not _preview_rect.visible
+				_preview_frame.visible = _preview_rect.visible
 		KEY_ESCAPE: quit_to_menu.emit()
 		KEY_U:
 			if HandState.source is UdpHandSource:
@@ -111,6 +170,7 @@ func _process(_delta: float) -> void:
 		field.sync(chart, now)
 	else:
 		field.sync(null, now)
+	_layout_preview()
 	_update_hud()
 	_check_finished(_delta)
 
@@ -152,5 +212,8 @@ func _update_hud() -> void:
 		lines.append("t %6.2f    %d/%d" % [
 			Conductor.judge_time(), score.judged, chart.notes.size()])
 	lines.append("")
-	lines.append("input: %s   (U udp/mock, TAB switch, M mirror, L lose)" % HandState.source_name())
+	lines.append("input: %s   (U udp/mock, TAB switch, M mirror, L lose, C camera)"
+		% HandState.source_name())
+	if _preview != null:
+		lines.append(_preview.status())
 	_hud.text = "\n".join(lines)

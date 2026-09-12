@@ -13,7 +13,8 @@ Change this file only by agreement, and bump `v` when you do.
 
 ## Transport
 
-- **UDP**, `127.0.0.1:9000`, vision → game, one datagram per camera frame
+- **UDP**, `127.0.0.1:5005`, vision → game, one datagram per camera frame
+- Camera preview (optional, separate socket): `127.0.0.1:5006` — see below
 - **Fire and forget.** No handshake, no acknowledgement, no retries
 - The game **drains its socket every frame and keeps only the newest packet**
 
@@ -53,7 +54,7 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `v` | int | Protocol version. Game ignores packets whose `v` it does not know. |
+| `v` | int | Protocol version. An absent `v` means 1 — the version that predates the field — so a sender that omits it is still accepted. |
 | `seq` | int | Monotonic frame counter. Lets the game detect drops and reordering. |
 | `t_capture` | float | `time.perf_counter()` sampled **immediately after `cap.read()` returns**, never at send time. |
 | `fps` | float | Observed capture rate, for the debug overlay. |
@@ -106,6 +107,31 @@ MediaPipe's handedness label flips when hands cross or occlude. Continuity
 doesn't: the model reasons about one isolated frame, we know the hand did not
 teleport since 16ms ago. Use the label only to break ties when re-acquiring
 both hands from nothing.
+
+## Camera preview (optional)
+
+A second, entirely separate channel: `127.0.0.1:5006`, one datagram per frame,
+**raw JPEG bytes, no header**. Newest wins — nothing to reassemble, nothing to
+acknowledge.
+
+It exists so the player can see themselves while they play. It is *not* input.
+
+**Why a separate socket.** Hand observations have a latency budget; a JPEG does
+not. Sharing a socket would put a multi-kilobyte payload on the one path that
+has to stay fast. Keeping them apart means the preview can be slow, lossy or
+missing without gameplay noticing — and it means the vision module can send the
+hand packet first every frame and give the preview only what is left over.
+
+| | |
+|---|---|
+| Rate | ~15 fps (hands run at 60) |
+| Size | 224 px wide, JPEG q55 — a few KB |
+| Encode cost | ~0.12 ms/frame, about 0.2% of one core |
+| Frame | already mirrored, so it reads as a mirror |
+
+Enable with `python3 vision/vertical_demo.py --preview`. The game shows it in
+the gap between the two panels, and `C` toggles it. If nothing arrives, nothing
+is drawn.
 
 ## Timebase
 

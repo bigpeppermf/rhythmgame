@@ -15,8 +15,15 @@ def port_number(value):
     return port
 
 
+PROTOCOL_VERSION = 1
+
+
 def build_packet(seq, t_capture, fps, hands):
     packet = {
+        # Stated explicitly so a future change can be detected rather than
+        # guessed at. Receivers treat an absent "v" as 1, since that is the
+        # version that predates the field.
+        "v": PROTOCOL_VERSION,
         "seq": seq,
         "t_capture": t_capture,
         "fps": fps,

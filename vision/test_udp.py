@@ -27,7 +27,7 @@ class UdpTests(unittest.TestCase):
                 self.assertTrue(sender.send(states, timestamp, 30.5))
                 data, _ = receiver.recvfrom(65535)
                 packet = decode_packet(data)
-                self.assertEqual(set(packet), {"seq", "t_capture", "fps", "hands"})
+                self.assertEqual(set(packet), {"v", "seq", "t_capture", "fps", "hands"})
                 self.assertEqual(packet["seq"], seq)
                 self.assertEqual(packet["t_capture"], timestamp)
                 self.assertEqual(packet["fps"], 30.5)

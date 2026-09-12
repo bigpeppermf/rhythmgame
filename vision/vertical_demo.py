@@ -17,6 +17,7 @@ from hand_detector import DEFAULT_MODEL, PALM_LANDMARKS, HandDetector
 from hand_state import HandStateTracker
 from udp_protocol import DEFAULT_HOST, DEFAULT_PORT, UdpHandSender, port_number
 from capture import CapturedFrame, LatestFrameCapture
+from preview import PreviewSender, DEFAULT_PORT as PREVIEW_PORT
 
 
 SLOTS = (("Left palm", (255, 255, 0)), ("Right palm", (0, 0, 255)))
@@ -74,6 +75,9 @@ def main():
     parser.add_argument("--host", default=DEFAULT_HOST, help="UDP destination IPv4 address/hostname")
     parser.add_argument("--port", type=port_number, default=DEFAULT_PORT, help="UDP destination port")
     parser.add_argument("--no-udp", action="store_true", help="Run only the local cursor demo")
+    parser.add_argument("--preview", action="store_true",
+                        help="Stream the mirrored camera image to the game as a self-view")
+    parser.add_argument("--preview-port", type=port_number, default=PREVIEW_PORT)
     args = parser.parse_args()
     # The brief's V4L2 backend is Linux-only. Choose a platform-specific backend.
     backend = cv2.CAP_DSHOW if sys.platform == "win32" else (
@@ -82,11 +86,15 @@ def main():
     state_tracker = HandStateTracker()
     cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, backend)
     sender = None
+    preview = None
     capture = None
     try:
         if not args.no_udp:
             sender = UdpHandSender(args.host, args.port)
             print(f"Sending hand JSON to {sender.destination[0]}:{sender.destination[1]}")
+        if args.preview:
+            preview = PreviewSender(args.host, args.preview_port)
+            print(f"Streaming self-view to {preview.destination[0]}:{preview.destination[1]}")
         if not cap.isOpened():
             raise RuntimeError("Cannot open input. Close other camera apps or try --camera 1.")
         if not args.video:
@@ -145,6 +153,12 @@ def main():
             positions = [hand.position if hand is not None else None for hand in hands]
             states = state_tracker.update(positions, t_capture)
             detection_ms = (perf_counter() - before) * 1000
+            # After the hand packet, never before: the preview has no latency
+            # budget and must not delay the signal that does. It is throttled
+            # internally and fails silently if nobody is listening.
+            if preview is not None:
+                preview.maybe_send(frame)
+
             count += 1
             if t_capture - start >= 1:
                 fps = count / (t_capture - start)
@@ -174,6 +188,10 @@ def main():
             if quit_requested:
                 break
     finally:
+        if preview is not None:
+            print(f"Preview: {preview.sent} frames sent, {preview.dropped} dropped, "
+                  f"{preview.encode_ms:.2f} ms/encode")
+            preview.close()
         if sender is not None:
             sender.close()
         if capture is None:

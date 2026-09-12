@@ -44,6 +44,15 @@ extends Resource
 @export var ui_accent := Color(0.50, 1.00, 0.70)
 @export var ui_warn := Color(1.00, 0.82, 0.45)
 
+@export_group("Camera preview")
+## The self-view the vision module can stream. Costs nothing when absent.
+@export var show_preview := true
+## Height as a fraction of the window. The preview sits in the gap between the
+## two panels, which is otherwise empty space.
+@export_range(0.05, 0.6) var preview_height := 0.26
+@export_range(0.0, 1.0) var preview_opacity := 0.85
+@export var preview_border := Color(0.55, 0.62, 0.78, 0.35)
+
 @export_group("Scenes")
 ## Each must extend NoteView.
 @export var tap_scene: PackedScene
