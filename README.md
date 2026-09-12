@@ -312,12 +312,16 @@ cd game && godot .        # F5 — menu → play → results
 | `scenes/main.tscn` | entry point; owns the flow |
 | `scenes/play_3d.tscn` | the game |
 | `scenes/calibrate.tscn` | measures input offset — **run this first on new hardware** |
+| `scenes/editor.tscn` | chart editor — piano roll with live reachability lint; see `docs/CHARTING.md` |
 | `scenes/play_test.tscn` | same logic, flat 2D, for debugging judgement |
 | `scenes/clock_test.tscn` | Conductor jitter/drift graph |
 
 ```bash
 godot --headless res://tests/judge_test.tscn   # 16 tests — chart, judging, scoring
-godot --headless res://tests/flow_test.tscn    # 28 tests — scenes, settings, stats
+godot --headless res://tests/flow_test.tscn    # 32 tests — scenes, settings, stats
+godot --headless res://tests/chart_io_test.tscn # 15 tests — round-trip, seek
+godot --headless res://tests/editor_test.tscn  # 29 tests — editor model, no mouse
+godot --headless res://tests/bridge_test.tscn  # game <- real vision encoder (start tools/vision_bridge_check.py first)
 godot res://tests/shot.tscn                    # render screenshots
 python3 ../tools/mock_sender.py --lose 3       # fake camera over real UDP
 ```

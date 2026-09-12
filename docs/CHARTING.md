@@ -86,13 +86,21 @@ much smaller and more reliable job.
 
 ## Order to build it
 
-1. `Conductor.play_from()` and `Chart.save_to()` — nothing works without them
-2. Read-only timeline that draws an existing chart, with a moving playhead
-3. Click to place and delete taps, with snap
-4. Drag to move; drag a note's end to make it a hold
-5. Live lint overlay
-6. Record mode
-7. Playtest hand-off
+1. ✅ `Conductor.play_from()` / `seek()` and `Chart.save_to()`
+2. ✅ Timeline that draws an existing chart, with a moving playhead
+3. ✅ Click to place and delete taps, with snap (1/1 1/2 1/4 1/3 1/6 off)
+4. ✅ Drag to move; drag a note's end to make it a hold; `H` toggles
+5. ✅ Live lint overlay — flagged pairs drawn in place as red connectors
+6. ⬜ Record mode
+7. ✅ Playtest hand-off — `P` saves and plays the in-memory chart; results
+   return you to the editor
+
+All of it lives in `game/scenes/editor.gd`. Every edit goes through a method
+that takes beats and heights rather than pixels, which is what lets
+`tests/editor_test.tscn` drive the whole model headless — 29 checks, no mouse.
+
+Open it from the menu (**Edit chart**) or run `res://scenes/editor.tscn`
+directly. It edits `res://charts/test.json`; change `chart_path` for another.
 
 **Stop after 5 if time runs out.** A timeline with lint that you click notes
 onto is already far better than editing JSON; 6 and 7 are conveniences rather

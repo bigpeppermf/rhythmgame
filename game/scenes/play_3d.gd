@@ -19,6 +19,9 @@ const OUTRO := 1.2
 @export var skin_path := "res://visual/default_skin.tres"
 
 var chart: Chart
+## Set before adding to the tree to play a chart that is not on disk - the
+## editor hands its working copy over this way for playtesting.
+var chart_override: Chart = null
 var judge: Judge
 var field: Playfield
 var score := ScoreState.new()
@@ -48,7 +51,7 @@ func _ready() -> void:
 	add_child(judge)
 	judge.note_judged.connect(_on_judged)
 
-	chart = Chart.load_from(CHART_PATH)
+	chart = chart_override if chart_override != null else Chart.load_from(CHART_PATH)
 	if chart != null:
 		for w in chart.lint(2.0, Field3D.track):
 			push_warning("chart lint: %s" % w)
