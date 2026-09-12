@@ -20,6 +20,7 @@ env/
 # Keep a small sample clip if you want one; ignore the rest.
 /recordings/
 /captures/
+/vision/models/
 calibration.local.json
 *.mp4
 *.avi
