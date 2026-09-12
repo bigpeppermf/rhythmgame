@@ -84,10 +84,15 @@ func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_score_hud = Label.new()
-	_score_hud.position = Vector2(24, 16)
-	_score_hud.add_theme_font_size_override("font_size", 28)
+	_score_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_score_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_score_hud.add_theme_font_size_override("font_size", 22)
 	_score_hud.add_theme_color_override("font_color", field.skin.ui_accent)
 	layer.add_child(_score_hud)
+	# Stack the readout in the narrow gap; anchors follow viewport resizing.
+	_score_hud.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_score_hud.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_score_hud.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_hud = Label.new()
 	_hud.position = Vector2(24, 54)
 	_hud.add_theme_font_size_override("font_size", 15)
@@ -205,7 +210,7 @@ func _on_judged(n: Note) -> void:
 
 
 func _update_hud() -> void:
-	_score_hud.text = "SCORE %d    MULTIPLIER x%d" % [score.score, score.multiplier]
+	_score_hud.text = "SCORE\n%d\nx%d" % [score.score, score.multiplier]
 	var lines := PackedStringArray()
 	if chart == null:
 		lines.append("no chart at %s" % chart_path)
