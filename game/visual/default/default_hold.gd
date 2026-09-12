@@ -1,11 +1,12 @@
 extends NoteView
-## Placeholder hold: a capsule lying along the lane, whitening as it is held.
+## Placeholder hold: the same dash, stretched along the panel by its duration.
 ##
-## Length comes from the note, so the view has to be rebuilt per note rather
-## than merely retinted - which is exactly the kind of thing a custom skin may
-## want to do differently (a stretched mesh, a shader, a particle trail).
+## Length comes from the note, so the mesh is rebuilt per note rather than
+## merely retinted - exactly the kind of thing a custom skin may want to do
+## differently (a stretched texture, a shader, a trail).
 
-const RADIUS := 0.34
+const THICK := 0.34
+const DEPTH := 0.12
 
 var _mesh: MeshInstance3D
 var _color: Color
@@ -13,19 +14,18 @@ var _color: Color
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
-	_mesh.rotation_degrees = Vector3(90, 0, 0)   # lie along Z
 	add_child(_mesh)
 
 
 func configure(note: Note, skin: GameSkin) -> void:
 	_color = skin.slot_color(note.slot)
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = RADIUS
-	cyl.bottom_radius = RADIUS
-	cyl.height = maxf(note.length * Field3D.SCROLL, 0.4)
-	_mesh.mesh = cyl
-	# Anchor the near end at the note's own moment; the body trails behind it.
-	_mesh.position.z = -cyl.height * 0.5
+	var b := BoxMesh.new()
+	var length: float = maxf(note.length * Field3D.SCROLL, 0.6)
+	b.size = Vector3(DEPTH, THICK, length)
+	_mesh.mesh = b
+	# Anchor the near end at the note's own moment; the body trails behind it
+	# up the panel, so the head is what the player aims at.
+	_mesh.position.z = -length * 0.5
 	visible = true
 
 

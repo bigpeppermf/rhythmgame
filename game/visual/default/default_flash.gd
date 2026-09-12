@@ -1,5 +1,5 @@
 extends FlashView
-## Placeholder hit flash: a ring that expands and fades.
+## Placeholder hit flash: a ring that expands and fades in the panel's plane.
 
 var _mesh: MeshInstance3D
 var _color: Color
@@ -7,7 +7,9 @@ var _color: Color
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
-	_mesh.rotation_degrees = Vector3(90, 0, 0)
+	# The playfield orients this node with the panel, whose normal is local X.
+	# A torus spins about its own Y, so tip it to lie flat in the panel.
+	_mesh.rotation_degrees = Vector3(0, 0, 90)
 	add_child(_mesh)
 
 

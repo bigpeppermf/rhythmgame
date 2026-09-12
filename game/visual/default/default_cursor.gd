@@ -1,6 +1,10 @@
 extends CursorView
-## Placeholder cursor: a ring facing the camera, opacity driven by tracking
-## confidence so degraded input is visible rather than silently wrong.
+## Placeholder cursor: a solid marker riding the panel's hit edge.
+##
+## Opacity follows tracking confidence, so degraded input is visible rather
+## than silently wrong.
+
+const RADIUS := 0.42
 
 var _mesh: MeshInstance3D
 var _color: Color
@@ -8,11 +12,10 @@ var _color: Color
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
-	var t := TorusMesh.new()
-	t.inner_radius = 0.42
-	t.outer_radius = 0.55
-	_mesh.mesh = t
-	_mesh.rotation_degrees = Vector3(90, 0, 0)
+	var s := SphereMesh.new()
+	s.radius = RADIUS
+	s.height = RADIUS * 2.0
+	_mesh.mesh = s
 	add_child(_mesh)
 
 

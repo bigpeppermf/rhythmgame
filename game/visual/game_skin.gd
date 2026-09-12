@@ -31,7 +31,8 @@ extends Resource
 @export var rail_color := Color(0.45, 0.55, 0.75, 0.30)
 @export var grid_color := Color(0.35, 0.45, 0.70, 0.10)
 @export var hit_plane_color := Color(0.80, 0.90, 1.00, 0.55)
-@export var grid_columns := 8
+## Faint depth rungs drawn across each panel. 0 for a bare outline.
+@export var grid_columns := 4
 
 @export_group("Interface")
 ## Menus, calibration and results read these, so restyling the game restyles

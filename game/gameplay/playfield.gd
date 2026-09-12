@@ -43,7 +43,8 @@ func sync(chart: Chart, now: float) -> void:
 func flash(note: Note) -> void:
 	var v: FlashView = _flash_pool.pop_back() if not _flash_pool.is_empty() else _make_flash()
 	v.configure(note.verdict, skin)
-	v.position = Field3D.plane(note.pos)
+	v.position = Field3D.cursor_position(note.slot, note.pos)
+	v.basis = Field3D.panel_basis(note.slot)
 	_flashes.append({"view": v, "age": 0.0})
 
 
@@ -83,7 +84,10 @@ func _sync_notes(chart: Chart, now: float) -> void:
 			v = _acquire(note.kind)
 			v.configure(note, skin)
 			_shown[note] = v
-		v.position = Field3D.note_position(note.time, now, note.pos)
+		v.position = Field3D.note_position(note.time, now, note.slot, note.pos)
+		# Orientation is geometry, so the playfield owns it too: in this basis
+		# -Z runs away down the panel and +Y is up.
+		v.basis = Field3D.panel_basis(note.slot)
 		var approach: float = clampf((note.time - now) / Field3D.LOOKAHEAD, 0.0, 1.0)
 		var progress: float = note.held / note.length if note.length > 0.0 else 0.0
 		v.update_view(approach, progress)
@@ -133,7 +137,8 @@ func _build_cursors() -> void:
 func _sync_cursors() -> void:
 	for slot in 2:
 		var h: HandObservation = HandState.hands[slot]
-		_cursors[slot].position = Field3D.plane(HandState.cursor(slot))
+		_cursors[slot].position = Field3D.cursor_position(slot, HandState.cursor(slot))
+		_cursors[slot].basis = Field3D.panel_basis(slot)
 		_cursors[slot].update_view(h.conf, h.state)
 
 
@@ -173,51 +178,30 @@ func _build_lane() -> void:
 	_lane = Node3D.new()
 	add_child(_lane)
 
-	var d := Field3D.depth()
-	var hh := Field3D.HEIGHT * 0.5
-
-	var rails := PackedVector3Array()
+	var edges := PackedVector3Array()
 	var rungs := PackedVector3Array()
-	var frame := PackedVector3Array()
 
-	# One vertical ribbon per hand. Height is the axis the player plays on, so
-	# the track is narrow and tall and carries no horizontal subdivisions -
-	# lanes across it would suggest a precision the game does not ask for.
 	for slot in 2:
-		var t: Vector2 = Field3D.track(slot)
-		var x0: float = Field3D.plane(Vector2(t.x, 0.5)).x
-		var x1: float = Field3D.plane(Vector2(t.y, 0.5)).x
-
-		# Four corner rails running into the distance.
-		for x in [x0, x1]:
-			for y in [-hh, hh]:
-				rails.append(Vector3(x, y, 0.0))
-				rails.append(Vector3(x, y, -d))
-
-		# Rungs at fixed time intervals - complete cross sections, not just the
-		# top and bottom edges. Drawing two of the four sides left the shape
-		# ambiguous: the eye read the partial rungs as the faces of a solid box
-		# rather than as depth markers inside a corridor.
-		var steps: int = int(Field3D.LOOKAHEAD / 0.5)
-		for i in range(1, steps + 1):
-			var z: float = -float(i) * 0.5 * Field3D.SCROLL
-			rungs.append_array(PackedVector3Array([
-				Vector3(x0, -hh, z), Vector3(x1, -hh, z),
-				Vector3(x1, -hh, z), Vector3(x1, hh, z),
-				Vector3(x1, hh, z), Vector3(x0, hh, z),
-				Vector3(x0, hh, z), Vector3(x0, -hh, z),
-			]))
-
-		frame.append_array(PackedVector3Array([
-			Vector3(x0, -hh, 0), Vector3(x1, -hh, 0),
-			Vector3(x1, -hh, 0), Vector3(x1, hh, 0),
-			Vector3(x1, hh, 0), Vector3(x0, hh, 0),
-			Vector3(x0, hh, 0), Vector3(x0, -hh, 0),
+		var c: PackedVector3Array = Field3D.corners(slot)
+		var nt: Vector3 = c[0]      # near top
+		var nb: Vector3 = c[1]      # near bottom
+		var ft: Vector3 = c[2]      # far top
+		var fb: Vector3 = c[3]      # far bottom
+		edges.append_array(PackedVector3Array([
+			nt, ft, ft, fb, fb, nb, nb, nt,
 		]))
 
-	_line(rails, skin.rail_color)
+		# Faint rungs at fixed time intervals. Without them a bare outline
+		# gives the eye nothing to measure approach speed against; with too
+		# many the panel stops reading as a flat surface.
+		var steps: int = maxi(skin.grid_columns, 0)
+		for i in range(1, steps):
+			var dt: float = Field3D.LOOKAHEAD * float(i) / steps
+			rungs.append(Field3D.at(slot, dt, 0.0))
+			rungs.append(Field3D.at(slot, dt, 1.0))
+
 	_line(rungs, skin.grid_color)
-	_line(frame, skin.hit_plane_color)
+	_line(edges, skin.hit_plane_color)
 
 
 func _line(pts: PackedVector3Array, col: Color) -> void:

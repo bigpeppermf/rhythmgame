@@ -23,9 +23,15 @@ them know what a chart, a beat, or a score is.
 | `CursorView` | `configure(slot, skin)` `update_view(confidence, state)` | tracking confidence and TRACKED/COASTING/LOST |
 | `FlashView` | `configure(verdict, skin)` `update_view(age)` `release()` | `age` 0→1 over `flash_duration` |
 
-**Position is not yours to set.** The playfield places every view from song
-time, because that is gameplay geometry. Your scene controls appearance, and
-may transform its own children freely.
+**Position and orientation are not yours to set.** The playfield places every
+view from song time and aligns it with its panel, because that is gameplay
+geometry. Your scene controls appearance, and may transform its own children
+freely.
+
+In the basis you are handed, **-Z runs away down the panel and +Y is up**, and
+the panel's normal is local X. So a dash lying on the panel is simply a mesh
+that is long in Z and thin in X; a ring lying flat in the panel is a torus
+tipped 90 degrees about Z.
 
 ## Why it is split this way
 

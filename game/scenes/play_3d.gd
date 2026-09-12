@@ -53,12 +53,12 @@ func _ready() -> void:
 
 func _build_camera(skin: GameSkin) -> void:
 	_cam = Camera3D.new()
-	# Nearly head-on, only slightly above centre. With vertical tracks the
-	# readable axis is height, and a steep downward tilt would foreshorten
-	# exactly the axis the player is being judged on.
-	_cam.position = Vector3(0.0, 0.9, 11.2)
-	_cam.rotation_degrees = Vector3(-4.0, 0.0, 0.0)
-	_cam.fov = 52.0
+	# Centred and nearly head-on. Height is the only charted axis, so a steep
+	# downward tilt would foreshorten exactly what the player is judged on.
+	# Far enough back that both panels fit with margins either side.
+	_cam.position = Vector3(0.0, 0.4, 12.0)
+	_cam.rotation_degrees = Vector3(-2.0, 0.0, 0.0)
+	_cam.fov = 56.0
 	add_child(_cam)
 
 	var env := Environment.new()
