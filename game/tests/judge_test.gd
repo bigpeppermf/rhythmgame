@@ -34,6 +34,7 @@ func _ready() -> void:
 	_run_perfect(chart)
 	_run_idle(chart)
 	_run_holds_released(chart)
+	_run_parked(chart)
 	_finish()
 
 
@@ -74,8 +75,23 @@ func _run_holds_released(chart: Chart) -> void:
 		[holds, res.counts[Note.Verdict.MISS]])
 
 
+## Regression: a hand already resting on a note when its window opens must be
+## graded on the beat, not on the moment of first contact. Resolving on contact
+## made every note the player was already sitting on grade as a MISS.
+func _run_parked(chart: Chart) -> void:
+	var res := _simulate(chart, true, 1.0, 0.60)
+	_check(res.counts[Note.Verdict.MISS] == 0,
+		"hand parked 600ms early still hits, got %d misses" %
+		res.counts[Note.Verdict.MISS])
+	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size(),
+		"parked early still grades PERFECT, got %d" %
+		res.counts[Note.Verdict.PERFECT])
+
+
 ## hold_ratio: fraction of each HOLD the synthetic hand stays inside for.
-func _simulate(chart: Chart, follow: bool, hold_ratio: float) -> Dictionary:
+## lead: how long before a note the hand moves onto it.
+func _simulate(chart: Chart, follow: bool, hold_ratio: float,
+		lead: float = 0.005) -> Dictionary:
 	var judge := Judge.new()
 	add_child(judge)
 	var score := ScoreState.new()
@@ -92,7 +108,7 @@ func _simulate(chart: Chart, follow: bool, hold_ratio: float) -> Dictionary:
 	while t < limit:
 		if follow:
 			for slot in 2:
-				HandState.hands[slot].pos = _target(by_slot[slot], next, slot, t, hold_ratio)
+				HandState.hands[slot].pos = _target(by_slot[slot], next, slot, t, hold_ratio, lead)
 				HandState.hands[slot].conf = 1.0
 				HandState.hands[slot].state = HandObservation.State.TRACKED
 		else:
@@ -114,14 +130,14 @@ func _simulate(chart: Chart, follow: bool, hold_ratio: float) -> Dictionary:
 ## Where a perfect hand would be at time t: on the next note once its moment
 ## has arrived, parked out of the way otherwise.
 func _target(notes: Array, next: Array[int], slot: int, t: float,
-		hold_ratio: float) -> Vector2:
+		hold_ratio: float, lead: float) -> Vector2:
 	while next[slot] < notes.size():
 		var n: Note = notes[next[slot]]
 		var leave: float = n.time + (n.length * hold_ratio if n.kind == Note.Kind.HOLD else 0.0)
 		if t > leave + 0.01:
 			next[slot] += 1
 			continue
-		if t >= n.time - 0.005:
+		if t >= n.time - lead:
 			return n.pos
 		return Vector2(0.5, 0.02)
 	return Vector2(0.5, 0.02)

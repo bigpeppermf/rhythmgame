@@ -54,7 +54,11 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 ## Running
 
 ```bash
-cd game && godot .          # F5 — playfield, mouse-driven
+cd game && godot .          # F5 — 3D playfield, mouse-driven
+#   scenes/play_3d.tscn     the game
+#   scenes/play_test.tscn   same logic, flat 2D — use when debugging judgement
+#   scenes/clock_test.tscn  Conductor jitter/drift graph
 python3 tools/mock_sender.py --pattern circle --lose 3   # fake camera over real UDP
 godot --headless res://tests/judge_test.tscn             # Judge test suite
+godot res://tests/shot.tscn                              # render screenshots
 ```

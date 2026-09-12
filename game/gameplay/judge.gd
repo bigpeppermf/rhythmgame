@@ -73,19 +73,38 @@ func _evaluate(n: Note, now: float, delta: float) -> bool:
 	if n.kind == Note.Kind.HOLD:
 		return _evaluate_hold(n, now, delta, hand, inside)
 
-	# TAP. Resolve the moment the hand arrives, rather than waiting for the
-	# window to close: late feedback feels like the game is lagging, even when
-	# the verdict is right.
+	# TAP.
+	#
+	# Resolving on first contact is wrong here, and the reason is specific to
+	# a game with no trigger: the hand is *always* somewhere. If it happens to
+	# be resting where the next note will arrive - which is constantly true,
+	# since consecutive notes are often near each other - then first contact
+	# happens the instant the note becomes active, a full WINDOW early, and
+	# grades as a MISS. The player is sitting exactly on the note and the game
+	# says they missed it.
+	#
+	# So track the closest approach in time instead, and resolve at the moment
+	# the grade can no longer improve: once `now` passes the note's time, every
+	# further frame is worse. That still gives immediate feedback in the common
+	# case, because for a hand already on target that moment IS the note's beat.
 	if inside:
-		n.timing_error = now - n.time
-		n.hit_distance = HandState.cursor(n.slot).distance_to(n.pos)
-		n.verdict = _grade(absf(n.timing_error), n.hit_distance)
-		note_judged.emit(n)
-		return false
+		var dt: float = now - n.time
+		if not n._entered or absf(dt) < absf(n.timing_error):
+			n._entered = true
+			n.timing_error = dt
+			n.hit_distance = HandState.cursor(n.slot).distance_to(n.pos)
+		if now >= n.time:
+			n.verdict = _grade(absf(n.timing_error), n.hit_distance)
+			note_judged.emit(n)
+			return false
 
-	if now > n.time + WINDOW:
-		n.verdict = Note.Verdict.MISS
-		n.timing_error = WINDOW
+	if now > n.time + GOOD_TIME:
+		# Touched at some point but never while on the beat: grade the best
+		# approach we saw. Never touched at all: miss.
+		n.verdict = _grade(absf(n.timing_error), n.hit_distance) if n._entered \
+			else Note.Verdict.MISS
+		if not n._entered:
+			n.timing_error = GOOD_TIME
 		note_judged.emit(n)
 		return false
 
@@ -105,9 +124,10 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 		else:
 			return true
 
-	# Accumulate only while actually inside. Letting go mid-hold does not fail
-	# the note outright — it just costs you the fraction you dropped.
-	if inside:
+	# Accumulate only while actually inside, and only once the hold has
+	# started - a hand parked on the note early must not bank credit for time
+	# before the note existed.
+	if inside and now >= n.time:
 		n.held = minf(n.held + delta, n.length)
 	if n.length > 0.0:
 		hold_progress.emit(n, n.held / n.length)
