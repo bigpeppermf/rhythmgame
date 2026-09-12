@@ -50,3 +50,11 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 - Note vocabulary — taps only, or holds and traces?
 - Chart format specifics
 - Scoring — binary hit/miss, or graded by how much of the window was satisfied?
+
+## Running
+
+```bash
+cd game && godot .          # F5 — playfield, mouse-driven
+python3 tools/mock_sender.py --pattern circle --lose 3   # fake camera over real UDP
+godot --headless res://tests/judge_test.tscn             # Judge test suite
+```

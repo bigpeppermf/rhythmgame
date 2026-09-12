@@ -1,0 +1,278 @@
+{
+ "title": "Judge Test",
+ "bpm": 120,
+ "audio": "res://audio/click_120.wav",
+ "offset": 0.0,
+ "notes": [
+  {
+   "beat": 8,
+   "slot": 0,
+   "x": 0.3,
+   "y": 0.45,
+   "type": "tap"
+  },
+  {
+   "beat": 9,
+   "slot": 1,
+   "x": 0.7,
+   "y": 0.55,
+   "type": "tap"
+  },
+  {
+   "beat": 10,
+   "slot": 0,
+   "x": 0.3,
+   "y": 0.45,
+   "type": "tap"
+  },
+  {
+   "beat": 11,
+   "slot": 1,
+   "x": 0.7,
+   "y": 0.55,
+   "type": "tap"
+  },
+  {
+   "beat": 12,
+   "slot": 0,
+   "x": 0.3,
+   "y": 0.45,
+   "type": "tap"
+  },
+  {
+   "beat": 13,
+   "slot": 1,
+   "x": 0.7,
+   "y": 0.55,
+   "type": "tap"
+  },
+  {
+   "beat": 14,
+   "slot": 0,
+   "x": 0.3,
+   "y": 0.45,
+   "type": "tap"
+  },
+  {
+   "beat": 15,
+   "slot": 1,
+   "x": 0.7,
+   "y": 0.55,
+   "type": "tap"
+  },
+  {
+   "beat": 16,
+   "slot": 0,
+   "x": 0.25,
+   "y": 0.2,
+   "type": "tap"
+  },
+  {
+   "beat": 17,
+   "slot": 1,
+   "x": 0.75,
+   "y": 0.2,
+   "type": "tap"
+  },
+  {
+   "beat": 18,
+   "slot": 0,
+   "x": 0.25,
+   "y": 0.8,
+   "type": "tap"
+  },
+  {
+   "beat": 19,
+   "slot": 1,
+   "x": 0.75,
+   "y": 0.8,
+   "type": "tap"
+  },
+  {
+   "beat": 20,
+   "slot": 0,
+   "x": 0.25,
+   "y": 0.2,
+   "type": "tap"
+  },
+  {
+   "beat": 21,
+   "slot": 1,
+   "x": 0.75,
+   "y": 0.2,
+   "type": "tap"
+  },
+  {
+   "beat": 22,
+   "slot": 0,
+   "x": 0.25,
+   "y": 0.8,
+   "type": "tap"
+  },
+  {
+   "beat": 23,
+   "slot": 1,
+   "x": 0.75,
+   "y": 0.8,
+   "type": "tap"
+  },
+  {
+   "beat": 24,
+   "slot": 0,
+   "x": 0.28,
+   "y": 0.35,
+   "type": "hold",
+   "length": 2
+  },
+  {
+   "beat": 26,
+   "slot": 1,
+   "x": 0.72,
+   "y": 0.65,
+   "type": "hold",
+   "length": 2
+  },
+  {
+   "beat": 28,
+   "slot": 0,
+   "x": 0.28,
+   "y": 0.35,
+   "type": "hold",
+   "length": 2
+  },
+  {
+   "beat": 30,
+   "slot": 1,
+   "x": 0.72,
+   "y": 0.65,
+   "type": "hold",
+   "length": 2
+  },
+  {
+   "beat": 34,
+   "slot": 0,
+   "x": 0.22,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 34,
+   "slot": 1,
+   "x": 0.78,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 35,
+   "slot": 0,
+   "x": 0.34,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 35,
+   "slot": 1,
+   "x": 0.66,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 36,
+   "slot": 0,
+   "x": 0.46,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 36,
+   "slot": 1,
+   "x": 0.54,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 37,
+   "slot": 0,
+   "x": 0.22,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 37,
+   "slot": 1,
+   "x": 0.78,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 38,
+   "slot": 0,
+   "x": 0.34,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 38,
+   "slot": 1,
+   "x": 0.66,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 39,
+   "slot": 0,
+   "x": 0.46,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 39,
+   "slot": 1,
+   "x": 0.54,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 40,
+   "slot": 0,
+   "x": 0.22,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 40,
+   "slot": 1,
+   "x": 0.78,
+   "y": 0.3,
+   "type": "tap"
+  },
+  {
+   "beat": 41,
+   "slot": 0,
+   "x": 0.34,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 41,
+   "slot": 1,
+   "x": 0.66,
+   "y": 0.7,
+   "type": "tap"
+  },
+  {
+   "beat": 43,
+   "slot": 0,
+   "x": 0.1,
+   "y": 0.1,
+   "type": "tap"
+  },
+  {
+   "beat": 43.25,
+   "slot": 0,
+   "x": 0.48,
+   "y": 0.9,
+   "type": "tap"
+  }
+ ]
+}

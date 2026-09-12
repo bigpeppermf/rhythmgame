@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Rhythm Game"
-run/main_scene="res://scenes/clock_test.tscn"
+run/main_scene="res://scenes/play_test.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [audio]
