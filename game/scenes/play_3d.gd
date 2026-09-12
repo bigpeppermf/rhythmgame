@@ -11,7 +11,7 @@ extends Node3D
 signal song_finished(score: ScoreState, chart: Chart)
 signal quit_to_menu
 
-const CHART_PATH := "res://charts/test.json"
+var chart_path: String = Settings.chart_path
 ## Grace after the last note resolves, so its hit flash is seen before the
 ## results screen replaces it.
 const OUTRO := 1.2
@@ -51,7 +51,7 @@ func _ready() -> void:
 	add_child(judge)
 	judge.note_judged.connect(_on_judged)
 
-	chart = chart_override if chart_override != null else Chart.load_from(CHART_PATH)
+	chart = chart_override if chart_override != null else Chart.load_from(chart_path)
 	if chart != null:
 		for w in chart.lint(2.0, Field3D.track):
 			push_warning("chart lint: %s" % w)
@@ -88,8 +88,7 @@ func _build_hud() -> void:
 	layer.add_child(_hud)
 
 
-## The self-view sits in the gap between the two panels - the one part of the
-## frame the game never draws in - so it costs no gameplay real estate.
+## The self-view sits in the lower-right corner, clear of both panels.
 func _build_preview(skin: GameSkin) -> void:
 	_preview = CameraPreview.new()
 	add_child(_preview)
@@ -131,7 +130,7 @@ func _layout_preview() -> void:
 	var h: float = screen.y * skin.preview_height
 	var aspect: float = float(_preview.texture.get_width()) / maxf(_preview.texture.get_height(), 1)
 	var size := Vector2(h * aspect, h)
-	var at := Vector2((screen.x - size.x) * 0.5, (screen.y - size.y) * 0.5)
+	var at := screen - size - Vector2(skin.preview_margin, skin.preview_margin)
 	_preview_rect.position = at
 	_preview_rect.size = size
 	_preview_rect.texture = _preview.texture
@@ -202,7 +201,7 @@ func _on_judged(n: Note) -> void:
 func _update_hud() -> void:
 	var lines := PackedStringArray()
 	if chart == null:
-		lines.append("no chart at %s" % CHART_PATH)
+		lines.append("no chart at %s" % chart_path)
 	elif not Conductor.playing:
 		lines.append("%s  -  %d notes  -  SPACE to start" % [chart.title, chart.notes.size()])
 		for w in chart.warnings:

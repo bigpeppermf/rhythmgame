@@ -34,7 +34,7 @@ const HANDLE := 9.0
 const MAX_UNDO := 200
 
 var chart: Chart
-var chart_path := "res://charts/test.json"
+var chart_path: String = Settings.chart_path
 
 var px_per_beat := 72.0
 var scroll_beat := 0.0

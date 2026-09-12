@@ -12,6 +12,7 @@ func _ready() -> void:
 	ed = load("res://scenes/editor.tscn").instantiate()
 	add_child(ed)
 	await get_tree().process_frame
+	ed.load_chart("res://charts/test.json")
 	_check(ed.chart != null and ed.chart.notes.size() == 38, "editor loads the test chart")
 	var base: int = ed.chart.notes.size()
 

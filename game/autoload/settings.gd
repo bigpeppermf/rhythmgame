@@ -11,6 +11,8 @@ const PATH := "user://settings.cfg"
 ## earlier point in the song. Measured by the calibration screen.
 var input_offset: float = 0.0
 var skin_path: String = "res://visual/default_skin.tres"
+## The chart the game plays and the editor opens.
+var chart_path: String = "res://charts/simple.json"
 
 
 func _ready() -> void:
@@ -24,6 +26,7 @@ func load_settings() -> void:
 		return
 	input_offset = cfg.get_value("input", "offset", 0.0)
 	skin_path = cfg.get_value("visual", "skin", skin_path)
+	chart_path = cfg.get_value("chart", "path", chart_path)
 	_apply()
 
 
@@ -31,6 +34,7 @@ func save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("input", "offset", input_offset)
 	cfg.set_value("visual", "skin", skin_path)
+	cfg.set_value("chart", "path", chart_path)
 	cfg.save(PATH)
 	_apply()
 

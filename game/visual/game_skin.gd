@@ -16,6 +16,10 @@ extends Resource
 	Color(0.35, 0.85, 1.00),
 	Color(1.00, 0.45, 0.75),
 ]
+## The hand markers. One colour for both on purpose: the panel already says
+## which hand is which, and a small bright dot reads as "you" at a glance.
+@export var cursor_color := Color(1.00, 0.18, 0.16)
+@export_range(0.05, 1.0) var cursor_radius := 0.20
 @export var perfect_color := Color(0.50, 1.00, 0.70)
 @export var great_color := Color(0.60, 0.85, 1.00)
 @export var good_color := Color(1.00, 0.90, 0.50)
@@ -47,9 +51,11 @@ extends Resource
 @export_group("Camera preview")
 ## The self-view the vision module can stream. Costs nothing when absent.
 @export var show_preview := true
-## Height as a fraction of the window. The preview sits in the gap between the
-## two panels, which is otherwise empty space.
-@export_range(0.05, 0.6) var preview_height := 0.26
+## Height as a fraction of the window. Sits in the lower-right corner, clear
+## of both panels.
+@export_range(0.05, 0.6) var preview_height := 0.22
+## Distance from the window edges, in pixels.
+@export var preview_margin := 18.0
 @export_range(0.0, 1.0) var preview_opacity := 0.85
 @export var preview_border := Color(0.55, 0.62, 0.78, 0.35)
 

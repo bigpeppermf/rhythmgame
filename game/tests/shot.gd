@@ -19,6 +19,7 @@ func _ready() -> void:
 	process_priority = -50
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	field = load("res://scenes/play_3d.tscn").instantiate()
+	field.chart_path = "res://charts/test.json"
 	if not skin_override.is_empty():
 		field.skin_path = skin_override
 	add_child(field)
