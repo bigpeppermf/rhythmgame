@@ -25,10 +25,12 @@ Godot 4 for all game logic and rendering.
 3. **Perspective 3D view** — notes approach the player from depth, Guitar
    Hero / Beat Saber style, rather than a flat 2D scroll.
 
-4. **Gestures are cut from v1.** Position-only. Gestures are a stretch goal.
-   This means there is NO discrete trigger event — a "hit" is positional
-   overlap during a time window, which is the most latency-tolerant design
-   possible.
+4. **CV gesture observations are now optional.** Open palm is normal input;
+   closed fist, thumbs-up, and index/thumb pinch with the other three fingers
+   curled into the palm are the three requested action
+   poses. `--gestures` enables these labels in the CV demo and its UDP extension.
+   They remain observations, not discrete trigger/hit events. Godot owns action
+   semantics; position-only overlap remains the baseline until game integration.
 
 5. **Latency is solved by calibration, not by engineering.** (See below.)
 

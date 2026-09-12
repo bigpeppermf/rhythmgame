@@ -13,7 +13,8 @@ import cv2
 import numpy as np
 
 
-from hand_detector import DEFAULT_MODEL, PALM_LANDMARKS, HandDetector
+from hand_detector import DEFAULT_MODEL, DEFAULT_GESTURE_MODEL, PALM_LANDMARKS, HandDetector
+from gestures import Gesture
 from hand_state import HandStateTracker
 from udp_protocol import DEFAULT_HOST, DEFAULT_PORT, UdpHandSender, port_number
 from capture import CapturedFrame, LatestFrameCapture
@@ -26,7 +27,8 @@ def label(canvas, text, xy, color=(220, 220, 220)):
     cv2.putText(canvas, text, xy, cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 1, cv2.LINE_AA)
 
 
-def draw_panel(states, fps, detection_ms, capture_fps=None, skipped=0, frame_age_ms=0.0):
+def draw_panel(states, fps, detection_ms, capture_fps=None, skipped=0, frame_age_ms=0.0,
+               gestures_enabled=False):
     """Draw only synthetic cursors; the webcam image is absent."""
     panel = np.full((480, 640, 3), 22, dtype=np.uint8)
     label(panel, "Vertical input demo - y=0 top, y=1 bottom", (20, 28))
@@ -46,6 +48,9 @@ def draw_panel(states, fps, detection_ms, capture_fps=None, skipped=0, frame_age
         label(panel, f"{hand.state} conf={hand.confidence:.2f}", (column - 120, 377))
         vx, vy = hand.velocity
         label(panel, f"vx={vx:.2f} vy={vy:.2f}", (column - 100, 427))
+        if gestures_enabled:
+            label(panel, f"{hand.gesture.label} {hand.gesture.confidence:.2f}",
+                  (column - 100, 449), color)
     label(panel, "D: toggle palm debug | Q or Esc: quit", (20, 465))
     return panel
 
@@ -70,22 +75,28 @@ def main():
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--video", help="Read a recorded clip instead of a webcam")
     parser.add_argument("--debug", action="store_true", help="Show camera and palm landmarks")
-    parser.add_argument("--model", default=str(DEFAULT_MODEL), help="Path to Hand Landmarker model")
+    parser.add_argument("--model", help="Override model path (must match selected task)")
+    parser.add_argument("--gestures", action="store_true",
+                        help="Recognize open palm, fist, thumbs-up, pinch; include gesture fields in UDP")
+    parser.add_argument("--gesture-debug", action="store_true",
+                        help="Enable gestures and print model scores, pinch gaps, and final labels at 4 Hz")
     parser.add_argument("--host", default=DEFAULT_HOST, help="UDP destination IPv4 address/hostname")
     parser.add_argument("--port", type=port_number, default=DEFAULT_PORT, help="UDP destination port")
     parser.add_argument("--no-udp", action="store_true", help="Run only the local cursor demo")
     args = parser.parse_args()
+    args.gestures = args.gestures or args.gesture_debug
     # The brief's V4L2 backend is Linux-only. Choose a platform-specific backend.
     backend = cv2.CAP_DSHOW if sys.platform == "win32" else (
         cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY)
-    detector = HandDetector(args.model)
+    model_path = args.model or (DEFAULT_GESTURE_MODEL if args.gestures else DEFAULT_MODEL)
+    detector = HandDetector(model_path, gestures=args.gestures)
     state_tracker = HandStateTracker()
     cap = cv2.VideoCapture(args.video) if args.video else cv2.VideoCapture(args.camera, backend)
     sender = None
     capture = None
     try:
         if not args.no_udp:
-            sender = UdpHandSender(args.host, args.port)
+            sender = UdpHandSender(args.host, args.port, include_gestures=args.gestures)
             print(f"Sending hand JSON to {sender.destination[0]}:{sender.destination[1]}")
         if not cap.isOpened():
             raise RuntimeError("Cannot open input. Close other camera apps or try --camera 1.")
@@ -103,7 +114,9 @@ def main():
         last_frame_at = start
         last_sequence, skipped = 0, 0
         last_udp_warning = float("-inf")
-        cv2.imshow("Vertical input", draw_panel(state_tracker.hands, 0, 0))
+        last_gesture_log = float("-inf")
+        cv2.imshow("Vertical input", draw_panel(state_tracker.hands, 0, 0,
+                                               gestures_enabled=args.gestures))
         while True:
             if capture is None:
                 # Files intentionally remain sequential, with no discarded frames.
@@ -120,9 +133,9 @@ def main():
                         # Display-only expiry: do not invent capture timestamps or
                         # send repeated stale frames. The UDP receiver times out.
                         unavailable = tuple(replace(hand, state="LOST", confidence=0.0,
-                                                    velocity=(0.0, 0.0))
+                                                    velocity=(0.0, 0.0), gesture=Gesture())
                                             for hand in state_tracker.hands)
-                        panel = draw_panel(unavailable, 0, 0)
+                        panel = draw_panel(unavailable, 0, 0, gestures_enabled=args.gestures)
                         label(panel, "Waiting for camera frame...", (20, 76))
                         cv2.imshow("Vertical input", panel)
                         if debug:
@@ -142,8 +155,15 @@ def main():
             frame = cv2.flip(sample.image, 1)  # Mirror so horizontal movement feels natural.
             before = perf_counter()
             hands = detector.detect(frame, t_capture)
+            if args.gesture_debug and t_capture - last_gesture_log >= 0.25:
+                for (name, _), hand in zip(SLOTS, hands):
+                    details = (f"{hand.gesture_debug} final={hand.gesture.label}:{hand.gesture.confidence:.2f}"
+                               if hand is not None else "hand missing")
+                    print(f"{name}: {details}", flush=True)
+                last_gesture_log = t_capture
             positions = [hand.position if hand is not None else None for hand in hands]
-            states = state_tracker.update(positions, t_capture)
+            states = state_tracker.update(positions, t_capture,
+                                          [hand.gesture if hand is not None else Gesture() for hand in hands])
             detection_ms = (perf_counter() - before) * 1000
             count += 1
             if t_capture - start >= 1:
@@ -155,7 +175,7 @@ def main():
                     last_udp_warning = t_capture
             cv2.imshow("Vertical input", draw_panel(
                 states, fps, detection_ms, sample.fps if capture is not None else None,
-                skipped, frame_age_ms))
+                skipped, frame_age_ms, gestures_enabled=args.gestures))
             if debug:
                 for (name, color), hand in zip(SLOTS, hands):
                     if hand is None:
@@ -165,10 +185,17 @@ def main():
                         x, y = hand.landmarks[index]
                         cv2.circle(frame, (round(x * (width - 1)), round(y * (height - 1))),
                                    4, color, -1)
+                    if args.gestures:
+                        tips = [(round(hand.landmarks[i][0] * (width - 1)),
+                                 round(hand.landmarks[i][1] * (height - 1))) for i in (4, 8, 12, 16, 20)]
+                        cv2.line(frame, tips[0], tips[1], (180, 180, 180), 1)
+                        for index, tip in enumerate(tips):
+                            cv2.circle(frame, tip, 6, (0, 255, 0) if index < 2 else (0, 180, 255), 2)
                     point = (round(hand.position[0] * (width - 1)),
                              round(hand.position[1] * (height - 1)))
                     cv2.circle(frame, point, 12, color, 2)
-                    label(frame, name, point, color)
+                    caption = f"{name}: {hand.gesture.label}" if args.gestures else name
+                    label(frame, caption, point, color)
                 cv2.imshow("Debug camera", frame)
             debug, quit_requested = poll_keys(debug)
             if quit_requested:

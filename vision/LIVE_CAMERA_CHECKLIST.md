@@ -124,6 +124,62 @@ exposure, and inference. Low Wait does not prove low end-to-end latency.
   A driver blocked in native read may produce the documented shutdown warning.
   Reconnect and relaunch to recover; automatic reconnection is not implemented.
 
+## Gestures
+
+After downloading the gesture model with `python vision/download_model.py --gestures`,
+run `python vision/vertical_demo.py --debug --gestures` in an activated venv
+(or prefix with `uv run`). Gesture labels appear on the cursor panel and debug
+image. Use only one player initially. These live tests have not been marked as passed.
+
+For the palm/thumbs-up/pinch retest, use `python vision/vertical_demo.py --debug --gesture-debug`
+in an activated venv, or prefix with `uv run`. Green rings identify the estimated
+thumb/index tips; amber rings mark the other three fingertips. Terminal output
+includes `model`, `gap`, `gap3d`, `extended`, `curled`, `index_reach`, `raw`, and
+`final` for each assigned hand; `hand missing` identifies tracking loss.
+Record a few diagnostic lines for each failed pose. No new model download is needed.
+
+- [ ] **Normal palm:** hold an open palm for 2 seconds with each hand. It reads
+  OPEN_PALM. Moving your fingers naturally should not repeatedly trigger FIST/PINCH.
+- [ ] **Intended fist:** close your fist with the knuckles and thumb facing the
+  camera, as intended for gameplay. Hold 2 seconds on each hand. It reads FIST,
+  clearly distinct from OPEN_PALM. Record failure angles and distances.
+- [ ] **Fist orientation:** rotate the fist toward each side and back. Current
+  FIST is general closed-fist detection, not an enforced facing direction; note
+  which orientations it accepts before deciding whether orientation gating is needed.
+- [ ] **Thumbs-up:** curl four fingers and point the thumb upward. Each hand
+  reads THUMBS_UP instead of FIST, PINCH, or OPEN_PALM.
+- [ ] **Closed-hand pinch:** curl middle, ring, and little fingers into the palm,
+  then reach the index fingertip toward the thumb tip until they touch.
+  Each hand reads PINCH with `curled=3/3`. Repeat at near/far comfortable distances
+  ten times.
+- [ ] **Open-hand pinch rejection:** touch thumb/index tips with the other three
+  fingers extended (an OK sign). Neither hand should read PINCH. Starting from a
+  valid closed-hand pinch, extend each supporting finger separately; PINCH should
+  clear within 100 ms of losing shape support.
+- [ ] **Pinch release:** separate the index/thumb tips and return to open palm.
+  PINCH clears. It may briefly read UNKNOWN during the change.
+- [ ] **Fist versus pinch:** alternate these poses ten times; a fully clenched
+  fist should not produce PINCH merely because its fingertips are close together.
+- [ ] **Independent gestures:** left FIST with right OPEN_PALM, then swap; repeat
+  with THUMBS_UP and PINCH. Labels must stay with the correct slot.
+- [ ] **Loss/reset:** hide a gesturing hand. Its gesture immediately becomes
+  UNKNOWN, including while its cursor position is COASTING. Reappear and hold
+  a different gesture: the new label confirms after about 40 ms of supporting observations.
+- [ ] **Score dips:** while a hand stays TRACKED, a brief uncertain classification
+  should not flicker the gesture. An unsupported pose should clear the previous
+  gesture within 100 ms of its last support. This grace period does not apply
+  when the hand itself disappears.
+- [ ] **UDP:** receiver with `--json` shows gesture and gesture_conf on each hand.
+  UNKNOWN carries zero gesture_conf. Stop gesture mode and run plain mode:
+  packets return to the original fields without gesture data.
+
+The pinch score primarily describes image-space tip proximity with shape/depth
+checks; it cannot prove skin contact. All three supporting fingers must be curled,
+and the index must reach away from its knuckle instead of tucking into a fist.
+New pinch entry requires a gap at most 0.30
+of palm size; the 0.30-0.45 band only retains an existing pinch to reduce flicker.
+Record false positives/negatives before treating these as reliable game controls.
+
 ## Results
 
 Date / camera / player distance / lighting:
