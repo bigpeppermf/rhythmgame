@@ -174,34 +174,44 @@ func _build_lane() -> void:
 	add_child(_lane)
 
 	var d := Field3D.depth()
-	var hw := Field3D.WIDTH * 0.5
 	var hh := Field3D.HEIGHT * 0.5
 
 	var rails := PackedVector3Array()
-	for x in [-hw, 0.0, hw]:
-		rails.append(Vector3(x, -hh, 0.0))
-		rails.append(Vector3(x, -hh, -d))
-	for i in range(1, int(Field3D.LOOKAHEAD) + 1):
-		var z := -float(i) * Field3D.SCROLL
-		rails.append(Vector3(-hw, -hh, z))
-		rails.append(Vector3(hw, -hh, z))
-	_line(rails, skin.rail_color)
-
-	# Longitudinal floor lines give the eye something to measure approach
-	# speed against; three rails alone leave the lane reading flat.
 	var grid := PackedVector3Array()
-	for i in range(1, skin.grid_columns):
-		var x: float = -hw + (Field3D.WIDTH / float(skin.grid_columns)) * i
-		grid.append(Vector3(x, -hh, 0.0))
-		grid.append(Vector3(x, -hh, -d))
-	_line(grid, skin.grid_color)
+	var frame := PackedVector3Array()
 
-	_line(PackedVector3Array([
-		Vector3(-hw, -hh, 0), Vector3(hw, -hh, 0),
-		Vector3(hw, -hh, 0), Vector3(hw, hh, 0),
-		Vector3(hw, hh, 0), Vector3(-hw, hh, 0),
-		Vector3(-hw, hh, 0), Vector3(-hw, -hh, 0),
-	]), skin.hit_plane_color)
+	# One track per hand, with the centre left empty.
+	for slot in 2:
+		var t: Vector2 = Field3D.track(slot)
+		var x0: float = Field3D.plane(Vector2(t.x, 0.5)).x
+		var x1: float = Field3D.plane(Vector2(t.y, 0.5)).x
+
+		for x in [x0, x1]:
+			rails.append(Vector3(x, -hh, 0.0))
+			rails.append(Vector3(x, -hh, -d))
+		for i in range(1, int(Field3D.LOOKAHEAD) + 1):
+			var z := -float(i) * Field3D.SCROLL
+			rails.append(Vector3(x0, -hh, z))
+			rails.append(Vector3(x1, -hh, z))
+
+		# Longitudinal floor lines give the eye something to measure approach
+		# speed against; rails alone leave the track reading flat.
+		var cols: int = maxi(skin.grid_columns / 2, 1)
+		for i in range(1, cols):
+			var x: float = lerpf(x0, x1, float(i) / cols)
+			grid.append(Vector3(x, -hh, 0.0))
+			grid.append(Vector3(x, -hh, -d))
+
+		frame.append_array(PackedVector3Array([
+			Vector3(x0, -hh, 0), Vector3(x1, -hh, 0),
+			Vector3(x1, -hh, 0), Vector3(x1, hh, 0),
+			Vector3(x1, hh, 0), Vector3(x0, hh, 0),
+			Vector3(x0, hh, 0), Vector3(x0, -hh, 0),
+		]))
+
+	_line(rails, skin.rail_color)
+	_line(grid, skin.grid_color)
+	_line(frame, skin.hit_plane_color)
 
 
 func _line(pts: PackedVector3Array, col: Color) -> void:

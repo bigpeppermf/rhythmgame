@@ -33,7 +33,7 @@ func _ready() -> void:
 	chart = Chart.load_from(CHART_PATH)
 	if chart == null:
 		return
-	for w in chart.lint():
+	for w in chart.lint(2.0, Field3D.GAP, Field3D.track):
 		push_warning("chart lint: %s" % w)
 
 
@@ -95,11 +95,13 @@ func _slot_color(slot: int) -> Color:
 
 func _draw() -> void:
 	var f := _field()
-	draw_rect(f, Color(1, 1, 1, 0.04))
-	draw_rect(f, Color(1, 1, 1, 0.12), false, 1.0)
-	# Centre line: the two hands own a side each.
-	draw_line(Vector2(f.position.x + f.size.x * 0.5, f.position.y),
-		Vector2(f.position.x + f.size.x * 0.5, f.end.y), Color(1, 1, 1, 0.07), 1.0)
+	# One track per hand, with the centre band left empty.
+	for slot in 2:
+		var t: Vector2 = Field3D.track(slot)
+		var r := Rect2(f.position + Vector2(t.x * f.size.x, 0.0),
+			Vector2((t.y - t.x) * f.size.x, f.size.y))
+		draw_rect(r, Color(1, 1, 1, 0.04))
+		draw_rect(r, Color(1, 1, 1, 0.12), false, 1.0)
 
 	if Conductor.playing:
 		_draw_notes(f)

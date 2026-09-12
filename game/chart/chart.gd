@@ -67,21 +67,35 @@ func rewind() -> void:
 ## than note density: two notes 80ms apart in the same place are trivial, two
 ## notes 400ms apart at opposite corners may be impossible. Density is visible
 ## when charting; reachability is not, which is why it needs a linter.
-func lint(max_speed: float = 2.0) -> PackedStringArray:
+func lint(max_speed: float = 2.0, gap: float = 0.0,
+		track_bounds: Callable = Callable()) -> PackedStringArray:
 	warnings = PackedStringArray()
 	var last: Array[Note] = [null, null]
 
 	for n in notes:
+		# Placement. The centre band has no track drawn under it, so a note
+		# there would float over empty space; a note on the other hand's track
+		# is unreachable by the hand that owns it.
+		if gap > 0.0 and absf(n.pos.x - 0.5) < gap:
+			warnings.append("slot %d: note at %.2fs sits in the centre gap (x %.2f)" %
+				[n.slot, n.time, n.pos.x])
+		elif track_bounds.is_valid():
+			var t: Vector2 = track_bounds.call(n.slot)
+			if n.pos.x < t.x - 0.001 or n.pos.x > t.y + 0.001:
+				warnings.append("slot %d: note at %.2fs is on the other track (x %.2f)" %
+					[n.slot, n.time, n.pos.x])
+
 		var prev: Note = last[n.slot]
 		if prev != null:
-			# A hold occupies the hand until it ends.
-			var gap: float = n.time - prev.end_time()
+			# A hold occupies the hand until it ends, so travel time is
+			# measured from when the previous note releases it.
+			var travel: float = n.time - prev.end_time()
 			var dist: float = prev.pos.distance_to(n.pos)
-			if gap > 0.0001 and dist / gap > max_speed:
+			if travel > 0.0001 and dist / travel > max_speed:
 				warnings.append(
 					"slot %d: %.2fs -> %.2fs needs %.1f u/s (max %.1f), dist %.2f" %
-					[n.slot, prev.end_time(), n.time, dist / gap, max_speed, dist])
-			elif gap <= 0.0001 and dist > 0.01:
+					[n.slot, prev.end_time(), n.time, dist / travel, max_speed, dist])
+			elif travel <= 0.0001 and dist > 0.01:
 				warnings.append(
 					"slot %d: two notes at %.2fs in different places (dist %.2f)" %
 					[n.slot, n.time, dist])

@@ -8,7 +8,17 @@ extends RefCounted
 ## and this one can judge identically.
 
 ## World size of the play area at the hit plane.
-const WIDTH := 8.0
+const WIDTH := 8.6
+
+## Half-width of the empty band down the centre, in normalized x. Each hand
+## gets its own track and the middle is left clear, so the two read as separate
+## even when the hands cross.
+##
+## Note that this changes *nothing* about the coordinate mapping: plane() stays
+## a plain linear map and the gap is purely a region where no lane is drawn.
+## Warping x to open the gap would have made judged distance and on-screen
+## distance disagree near the centre, which is a bug waiting to happen.
+const GAP := 0.11
 const HEIGHT := 4.8
 ## World units the highway travels per second. Raising this makes notes arrive
 ## faster at the same chart - it is a readability knob, not a difficulty one.
@@ -33,3 +43,13 @@ static func note_position(note_time: float, now: float, p: Vector2) -> Vector3:
 
 static func depth() -> float:
 	return LOOKAHEAD * SCROLL
+
+
+## Normalized x bounds of one hand's track. slot 0 is left, 1 is right.
+static func track(slot: int) -> Vector2:
+	return Vector2(0.0, 0.5 - GAP) if slot == 0 else Vector2(0.5 + GAP, 1.0)
+
+
+## True if x falls in the empty centre band, where nothing should be charted.
+static func in_gap(x: float) -> bool:
+	return absf(x - 0.5) < GAP

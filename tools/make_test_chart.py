@@ -8,6 +8,12 @@ import json
 
 BPM = 120
 OUT = "game/charts/test.json"
+
+# Each hand has its own track with an empty band down the centre, so every note
+# must stay on its own side. Keep clear of the gap: Field3D.GAP is 0.11, so the
+# band is x in (0.39, 0.61). Chart.lint() flags anything that strays.
+LEFT = (0.08, 0.36)
+RIGHT = (0.64, 0.92)
 notes = []
 
 
@@ -37,8 +43,8 @@ for i in range(8):
 # Bars 7-8 - holds. Two beats each, both hands.
 for i in range(2):
     base = 24 + i * 4
-    n(base, 0, 0.28, 0.35, "hold", 2)
-    n(base + 2, 1, 0.72, 0.65, "hold", 2)
+    n(base, 0, 0.24, 0.35, "hold", 2)
+    n(base + 2, 1, 0.76, 0.65, "hold", 2)
 
 # Bars 9-10 - simultaneous, both hands on the same beat.
 # Starts at 34, not 32: slot 1's last hold runs until beat 32, and a tap on
@@ -47,14 +53,14 @@ for i in range(2):
 for i in range(8):
     beat = 34 + i
     y = 0.30 + 0.4 * (i % 2)
-    n(beat, 0, 0.22 + 0.12 * (i % 3), y)
-    n(beat, 1, 0.78 - 0.12 * (i % 3), y)
+    n(beat, 0, 0.14 + 0.08 * (i % 3), y)
+    n(beat, 1, 0.86 - 0.08 * (i % 3), y)
 
 # Bar 11 - DELIBERATELY UNREACHABLE. Quarter of a beat (0.125s) apart at
 # opposite corners: needs ~5 u/s against a 2 u/s budget. The linter should
 # flag exactly this and nothing before it.
 n(43, 0, 0.10, 0.10)
-n(43.25, 0, 0.48, 0.90)
+n(43.25, 0, 0.36, 0.90)
 
 notes.sort(key=lambda e: (e["beat"], e["slot"]))
 chart = {

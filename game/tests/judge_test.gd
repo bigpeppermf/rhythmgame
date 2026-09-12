@@ -25,11 +25,19 @@ func _ready() -> void:
 	_check(chart.bpm == 120.0, "bpm 120")
 	_check(_is_sorted(chart), "notes sorted by time")
 
-	# The generator plants exactly one physically impossible pair.
-	var warns := chart.lint()
-	_check(warns.size() == 1, "lint finds 1 unreachable pair, got %d" % warns.size())
-	if warns.size() == 1:
-		print("      ", warns[0])
+	# The generator plants exactly one physically impossible pair, and nothing
+	# else: no note in the centre gap, none on the wrong hand's track.
+	var warns := chart.lint(2.0, Field3D.GAP, Field3D.track)
+	_check(warns.size() == 1, "lint finds only the planted pair, got %d" % warns.size())
+	for w in warns:
+		print("      ", w)
+
+	var off := 0
+	for n in chart.notes:
+		var t: Vector2 = Field3D.track(n.slot)
+		if Field3D.in_gap(n.pos.x) or n.pos.x < t.x or n.pos.x > t.y:
+			off += 1
+	_check(off == 0, "every note sits on its own track, %d stray" % off)
 
 	_run_perfect(chart)
 	_run_idle(chart)
