@@ -186,8 +186,9 @@ func _draw_hud() -> void:
 			for w in chart.warnings:
 				lines.append("   " + w)
 	else:
-		lines.append("%7d   x%d combo   %.1f%%" % [score.score, score.combo, score.accuracy()])
-		lines.append("P %d  G %d  g %d  MISS %d" % [
+		lines.append("Score %d   Multiplier x%d   Combo %d   Best Combo %d" %
+			[score.score, score.multiplier, score.combo, score.best_combo])
+		lines.append("PERFECT %d  GREAT %d  GOOD %d  MISS %d" % [
 			score.counts[Note.Verdict.PERFECT], score.counts[Note.Verdict.GREAT],
 			score.counts[Note.Verdict.GOOD], score.counts[Note.Verdict.MISS]])
 		lines.append("t %6.2f   %d/%d" % [Conductor.judge_time(), score.judged, chart.notes.size()])

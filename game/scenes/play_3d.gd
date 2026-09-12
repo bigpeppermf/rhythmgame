@@ -26,6 +26,7 @@ var judge: Judge
 var field: Playfield
 var score := ScoreState.new()
 
+var _score_hud: Label
 var _hud: Label
 var _cam: Camera3D
 var _outro := -1.0
@@ -82,8 +83,13 @@ func _build_camera(skin: GameSkin) -> void:
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	_score_hud = Label.new()
+	_score_hud.position = Vector2(24, 16)
+	_score_hud.add_theme_font_size_override("font_size", 28)
+	_score_hud.add_theme_color_override("font_color", field.skin.ui_accent)
+	layer.add_child(_score_hud)
 	_hud = Label.new()
-	_hud.position = Vector2(24, 20)
+	_hud.position = Vector2(24, 54)
 	_hud.add_theme_font_size_override("font_size", 15)
 	layer.add_child(_hud)
 
@@ -199,6 +205,7 @@ func _on_judged(n: Note) -> void:
 
 
 func _update_hud() -> void:
+	_score_hud.text = "SCORE %d    MULTIPLIER x%d" % [score.score, score.multiplier]
 	var lines := PackedStringArray()
 	if chart == null:
 		lines.append("no chart at %s" % chart_path)
@@ -207,8 +214,8 @@ func _update_hud() -> void:
 		for w in chart.warnings:
 			lines.append("lint: " + w)
 	else:
-		lines.append("%7d    x%d combo    %.1f%%" % [score.score, score.combo, score.accuracy()])
-		lines.append("P %d  G %d  g %d  MISS %d" % [
+		lines.append("Combo %d    Best Combo %d" % [score.combo, score.best_combo])
+		lines.append("PERFECT %d  GREAT %d  GOOD %d  MISS %d" % [
 			score.counts[Note.Verdict.PERFECT], score.counts[Note.Verdict.GREAT],
 			score.counts[Note.Verdict.GOOD], score.counts[Note.Verdict.MISS]])
 		lines.append("t %6.2f    %d/%d" % [
