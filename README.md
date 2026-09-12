@@ -54,11 +54,42 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 ## Running
 
 ```bash
-cd game && godot .          # F5 — 3D playfield, mouse-driven
-#   scenes/play_3d.tscn     the game
-#   scenes/play_test.tscn   same logic, flat 2D — use when debugging judgement
-#   scenes/clock_test.tscn  Conductor jitter/drift graph
-python3 tools/mock_sender.py --pattern circle --lose 3   # fake camera over real UDP
-godot --headless res://tests/judge_test.tscn             # Judge test suite
-godot res://tests/shot.tscn                              # render screenshots
+cd game && godot .        # F5 — menu → play → results
 ```
+
+| Scene | |
+|---|---|
+| `scenes/main.tscn` | entry point; owns the flow |
+| `scenes/play_3d.tscn` | the game |
+| `scenes/calibrate.tscn` | measures input offset — **run this first on new hardware** |
+| `scenes/play_test.tscn` | same logic, flat 2D, for debugging judgement |
+| `scenes/clock_test.tscn` | Conductor jitter/drift graph |
+
+```bash
+godot --headless res://tests/judge_test.tscn   # 16 tests — chart, judging, scoring
+godot --headless res://tests/flow_test.tscn    # 28 tests — scenes, settings, stats
+godot res://tests/shot.tscn                    # render screenshots
+python3 ../tools/mock_sender.py --lose 3       # fake camera over real UDP
+```
+
+## Replacing the look
+
+All presentation lives behind a `GameSkin` resource. Duplicate
+`game/visual/default_skin.tres`, point its scene slots at your own scenes, and
+set `Settings.skin_path`. Your scenes implement `NoteView`, `CursorView` or
+`FlashView` — three tiny interfaces, none of which know what a chart, a beat or
+a score is.
+
+`game/visual/example_alt/` is a worked example that renders the same score at
+the same timestamp as the default. See [`game/visual/README.md`](game/visual/README.md).
+
+## Calibration
+
+The camera pipeline runs 50–150ms behind reality. Nearly all of that is
+*constant*, and constant delay is an offset problem rather than a latency one:
+measure it once, judge against `song_time - offset`, and it stops mattering.
+What survives is jitter, which is small enough to live with.
+
+`scenes/calibrate.tscn` measures it — two targets alternate on every beat, so
+the pattern is predictable and the player anticipates rather than reacts. The
+median of ~20 swings becomes `Settings.input_offset`.

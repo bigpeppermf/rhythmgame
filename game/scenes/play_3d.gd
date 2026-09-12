@@ -6,9 +6,15 @@ extends Node3D
 ## why swapping the look (Playfield.skin) or the input (HandState.source)
 ## changes nothing here.
 ##
-##   SPACE start/restart   U udp/mock   TAB switch hand   M mirror   L lose
+##   SPACE restart   U udp/mock   TAB switch hand   M mirror   L lose   ESC menu
+
+signal song_finished(score: ScoreState, chart: Chart)
+signal quit_to_menu
 
 const CHART_PATH := "res://charts/test.json"
+## Grace after the last note resolves, so its hit flash is seen before the
+## results screen replaces it.
+const OUTRO := 1.2
 ## Swap this (or set it before _ready) to restyle the entire game.
 @export var skin_path := "res://visual/default_skin.tres"
 
@@ -19,6 +25,7 @@ var score := ScoreState.new()
 
 var _hud: Label
 var _cam: Camera3D
+var _outro := -1.0
 
 
 func _ready() -> void:
@@ -41,6 +48,7 @@ func _ready() -> void:
 	if chart != null:
 		for w in chart.lint():
 			push_warning("chart lint: %s" % w)
+	_start()
 
 
 func _build_camera(skin: GameSkin) -> void:
@@ -77,6 +85,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match event.keycode:
 		KEY_SPACE: _start()
+		KEY_ESCAPE: quit_to_menu.emit()
 		KEY_U:
 			if HandState.source is UdpHandSource:
 				HandState.use_mock()
@@ -90,6 +99,7 @@ func _start() -> void:
 	score.reset()
 	field.clear()
 	judge.begin(chart)
+	_outro = -1.0
 	Conductor.play(load(chart.audio_path), chart.bpm)
 
 
@@ -101,6 +111,23 @@ func _process(_delta: float) -> void:
 	else:
 		field.sync(null, now)
 	_update_hud()
+	_check_finished(_delta)
+
+
+## The chart ends when every note has resolved, which is usually well before
+## the audio does - the click track is two minutes and the chart is twenty
+## seconds. Waiting for the song to end would leave the player staring at an
+## empty lane.
+func _check_finished(delta: float) -> void:
+	if _outro >= 0.0:
+		_outro += delta
+		if _outro >= OUTRO:
+			_outro = -1.0
+			Conductor.stop()
+			song_finished.emit(score, chart)
+		return
+	if Conductor.playing and judge.finished():
+		_outro = 0.0
 
 
 func _on_judged(n: Note) -> void:

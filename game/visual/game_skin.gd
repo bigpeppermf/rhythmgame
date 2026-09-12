@@ -33,6 +33,16 @@ extends Resource
 @export var hit_plane_color := Color(0.80, 0.90, 1.00, 0.55)
 @export var grid_columns := 8
 
+@export_group("Interface")
+## Menus, calibration and results read these, so restyling the game restyles
+## its screens too rather than leaving them on engine defaults.
+@export var ui_background := Color(0.05, 0.055, 0.08)
+@export var ui_text := Color(0.95, 0.96, 1.00)
+@export var ui_dim := Color(0.62, 0.66, 0.76)
+@export var ui_faint := Color(0.35, 0.38, 0.46)
+@export var ui_accent := Color(0.50, 1.00, 0.70)
+@export var ui_warn := Color(1.00, 0.82, 0.45)
+
 @export_group("Scenes")
 ## Each must extend NoteView.
 @export var tap_scene: PackedScene
