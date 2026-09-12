@@ -177,30 +177,36 @@ func _build_lane() -> void:
 	var hh := Field3D.HEIGHT * 0.5
 
 	var rails := PackedVector3Array()
-	var grid := PackedVector3Array()
+	var rungs := PackedVector3Array()
 	var frame := PackedVector3Array()
 
-	# One track per hand, with the centre left empty.
+	# One vertical ribbon per hand. Height is the axis the player plays on, so
+	# the track is narrow and tall and carries no horizontal subdivisions -
+	# lanes across it would suggest a precision the game does not ask for.
 	for slot in 2:
 		var t: Vector2 = Field3D.track(slot)
 		var x0: float = Field3D.plane(Vector2(t.x, 0.5)).x
 		var x1: float = Field3D.plane(Vector2(t.y, 0.5)).x
 
+		# Four corner rails running into the distance.
 		for x in [x0, x1]:
-			rails.append(Vector3(x, -hh, 0.0))
-			rails.append(Vector3(x, -hh, -d))
-		for i in range(1, int(Field3D.LOOKAHEAD) + 1):
-			var z := -float(i) * Field3D.SCROLL
-			rails.append(Vector3(x0, -hh, z))
-			rails.append(Vector3(x1, -hh, z))
+			for y in [-hh, hh]:
+				rails.append(Vector3(x, y, 0.0))
+				rails.append(Vector3(x, y, -d))
 
-		# Longitudinal floor lines give the eye something to measure approach
-		# speed against; rails alone leave the track reading flat.
-		var cols: int = maxi(skin.grid_columns / 2, 1)
-		for i in range(1, cols):
-			var x: float = lerpf(x0, x1, float(i) / cols)
-			grid.append(Vector3(x, -hh, 0.0))
-			grid.append(Vector3(x, -hh, -d))
+		# Rungs at fixed time intervals - complete cross sections, not just the
+		# top and bottom edges. Drawing two of the four sides left the shape
+		# ambiguous: the eye read the partial rungs as the faces of a solid box
+		# rather than as depth markers inside a corridor.
+		var steps: int = int(Field3D.LOOKAHEAD / 0.5)
+		for i in range(1, steps + 1):
+			var z: float = -float(i) * 0.5 * Field3D.SCROLL
+			rungs.append_array(PackedVector3Array([
+				Vector3(x0, -hh, z), Vector3(x1, -hh, z),
+				Vector3(x1, -hh, z), Vector3(x1, hh, z),
+				Vector3(x1, hh, z), Vector3(x0, hh, z),
+				Vector3(x0, hh, z), Vector3(x0, -hh, z),
+			]))
 
 		frame.append_array(PackedVector3Array([
 			Vector3(x0, -hh, 0), Vector3(x1, -hh, 0),
@@ -210,7 +216,7 @@ func _build_lane() -> void:
 		]))
 
 	_line(rails, skin.rail_color)
-	_line(grid, skin.grid_color)
+	_line(rungs, skin.grid_color)
 	_line(frame, skin.hit_plane_color)
 
 

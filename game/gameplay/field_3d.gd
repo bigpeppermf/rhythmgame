@@ -5,26 +5,27 @@ extends RefCounted
 ## This is the *only* place that knows the game is rendered in perspective.
 ## The Judge, the Chart and HandState all work in normalized [0,1] and never
 ## learn what the renderer does with it - which is why the flat 2D playfield
-## and this one can judge identically.
+## and this one judge identically.
 
-## World size of the play area at the hit plane.
-const WIDTH := 8.6
+## World span of the full normalized x range.
+const WIDTH := 9.0
+## Tall, because each track is a vertical ribbon rather than a floor.
+const HEIGHT := 7.2
 
-## Half-width of the empty band down the centre, in normalized x. Each hand
-## gets its own track and the middle is left clear, so the two read as separate
-## even when the hands cross.
-##
-## Note that this changes *nothing* about the coordinate mapping: plane() stays
-## a plain linear map and the gap is purely a region where no lane is drawn.
-## Warping x to open the gap would have made judged distance and on-screen
-## distance disagree near the centre, which is a bug waiting to happen.
-const GAP := 0.11
-const HEIGHT := 4.8
-## World units the highway travels per second. Raising this makes notes arrive
-## faster at the same chart - it is a readability knob, not a difficulty one.
+## World units the track travels per second. Raising this makes notes arrive
+## faster at the same chart - a readability knob, not a difficulty one.
 const SCROLL := 8.5
-## Seconds of chart visible ahead. Sets how long the highway looks.
+## Seconds of chart visible ahead. Sets how long the track looks.
 const LOOKAHEAD := 2.0
+
+## Normalized width of one track. One lane, undivided: height is the axis the
+## player plays on, so subdividing horizontally would only add noise.
+##
+## Sized so a note nearly fills the lane with a little margin - which is the
+## point of a single lane. The note IS the lane position.
+const TRACK_W := 0.21
+## Normalized centre of each track. Index is the slot: 0 = left, 1 = right.
+const TRACK_X := [0.29, 0.71]
 
 
 ## Normalized position -> world position at the hit plane.
@@ -45,11 +46,18 @@ static func depth() -> float:
 	return LOOKAHEAD * SCROLL
 
 
-## Normalized x bounds of one hand's track. slot 0 is left, 1 is right.
+## Normalized x bounds of one hand's track.
 static func track(slot: int) -> Vector2:
-	return Vector2(0.0, 0.5 - GAP) if slot == 0 else Vector2(0.5 + GAP, 1.0)
+	var c: float = TRACK_X[slot]
+	return Vector2(c - TRACK_W * 0.5, c + TRACK_W * 0.5)
 
 
-## True if x falls in the empty centre band, where nothing should be charted.
-static func in_gap(x: float) -> bool:
-	return absf(x - 0.5) < GAP
+## Normalized x every note for this hand should sit on. With one lane, the
+## charted axis is height; x is just which track you are on.
+static func lane_x(slot: int) -> float:
+	return TRACK_X[slot]
+
+
+static func on_track(slot: int, x: float) -> bool:
+	var t := track(slot)
+	return x >= t.x - 0.001 and x <= t.y + 0.001

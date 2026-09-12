@@ -33,7 +33,7 @@ func _ready() -> void:
 	chart = Chart.load_from(CHART_PATH)
 	if chart == null:
 		return
-	for w in chart.lint(2.0, Field3D.GAP, Field3D.track):
+	for w in chart.lint(2.0, Field3D.track):
 		push_warning("chart lint: %s" % w)
 
 

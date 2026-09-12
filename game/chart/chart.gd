@@ -67,22 +67,18 @@ func rewind() -> void:
 ## than note density: two notes 80ms apart in the same place are trivial, two
 ## notes 400ms apart at opposite corners may be impossible. Density is visible
 ## when charting; reachability is not, which is why it needs a linter.
-func lint(max_speed: float = 2.0, gap: float = 0.0,
+func lint(max_speed: float = 2.0,
 		track_bounds: Callable = Callable()) -> PackedStringArray:
 	warnings = PackedStringArray()
 	var last: Array[Note] = [null, null]
 
 	for n in notes:
-		# Placement. The centre band has no track drawn under it, so a note
-		# there would float over empty space; a note on the other hand's track
-		# is unreachable by the hand that owns it.
-		if gap > 0.0 and absf(n.pos.x - 0.5) < gap:
-			warnings.append("slot %d: note at %.2fs sits in the centre gap (x %.2f)" %
-				[n.slot, n.time, n.pos.x])
-		elif track_bounds.is_valid():
+		# Placement. Anything off its own track floats over empty space and is
+		# unreachable by the hand that owns it.
+		if track_bounds.is_valid():
 			var t: Vector2 = track_bounds.call(n.slot)
 			if n.pos.x < t.x - 0.001 or n.pos.x > t.y + 0.001:
-				warnings.append("slot %d: note at %.2fs is on the other track (x %.2f)" %
+				warnings.append("slot %d: note at %.2fs is off its track (x %.2f)" %
 					[n.slot, n.time, n.pos.x])
 
 		var prev: Note = last[n.slot]

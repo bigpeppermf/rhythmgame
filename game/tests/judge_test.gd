@@ -27,15 +27,14 @@ func _ready() -> void:
 
 	# The generator plants exactly one physically impossible pair, and nothing
 	# else: no note in the centre gap, none on the wrong hand's track.
-	var warns := chart.lint(2.0, Field3D.GAP, Field3D.track)
+	var warns := chart.lint(2.0, Field3D.track)
 	_check(warns.size() == 1, "lint finds only the planted pair, got %d" % warns.size())
 	for w in warns:
 		print("      ", w)
 
 	var off := 0
 	for n in chart.notes:
-		var t: Vector2 = Field3D.track(n.slot)
-		if Field3D.in_gap(n.pos.x) or n.pos.x < t.x or n.pos.x > t.y:
+		if not Field3D.on_track(n.slot, n.pos.x):
 			off += 1
 	_check(off == 0, "every note sits on its own track, %d stray" % off)
 
