@@ -11,7 +11,7 @@ extends Node3D
 signal song_finished(score: ScoreState, chart: Chart)
 signal quit_to_menu
 
-const CHART_PATH := "res://charts/test.json"
+const CHART_PATH := "res://charts/song.json"
 ## Grace after the last note resolves, so its hit flash is seen before the
 ## results screen replaces it.
 const OUTRO := 1.2
@@ -26,6 +26,9 @@ var score := ScoreState.new()
 var _hud: Label
 var _cam: Camera3D
 var _outro := -1.0
+## True when the chart's audio file isn't there yet - the song hasn't been
+## dropped in. Not an error: this is the expected state until it is.
+var _missing_audio := false
 
 
 func _ready() -> void:
@@ -97,10 +100,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _start() -> void:
 	if chart == null:
 		return
+	_outro = -1.0
+	_missing_audio = not ResourceLoader.exists(chart.audio_path)
+	if _missing_audio:
+		Conductor.stop()
+		field.clear()
+		return
 	score.reset()
 	field.clear()
 	judge.begin(chart)
-	_outro = -1.0
 	Conductor.play(load(chart.audio_path), chart.bpm)
 
 
@@ -140,6 +148,9 @@ func _update_hud() -> void:
 	var lines := PackedStringArray()
 	if chart == null:
 		lines.append("no chart at %s" % CHART_PATH)
+	elif _missing_audio:
+		lines.append("%s  -  no audio yet at %s" % [chart.title, chart.audio_path])
+		lines.append("drop the track in, then SPACE to retry")
 	elif not Conductor.playing:
 		lines.append("%s  -  %d notes  -  SPACE to start" % [chart.title, chart.notes.size()])
 		for w in chart.warnings:

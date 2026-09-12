@@ -35,6 +35,8 @@ Thumbs.db
 .remember/
 .claude/
 
-# Generated test assets (regenerate with tools/make_click_track.py)
-game/audio/click_*.wav
-game/audio/click_*.wav.import
+# Audio is never committed: the click track is regenerated with
+# tools/make_click_track.py, the real song is dropped in locally
+# (see game/audio/README.md).
+game/audio/*
+!game/audio/README.md
