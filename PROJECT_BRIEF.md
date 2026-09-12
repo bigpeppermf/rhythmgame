@@ -27,7 +27,7 @@ Godot 4 for all game logic and rendering.
 
 4. **CV gesture observations are now optional.** Open palm is normal input;
    closed fist, thumbs-up, and index/thumb pinch with the other three fingers
-   curled into the palm are the three requested action
+   loosely curled are the three requested action
    poses. `--gestures` enables these labels in the CV demo and its UDP extension.
    They remain observations, not discrete trigger/hit events. Godot owns action
    semantics; position-only overlap remains the baseline until game integration.

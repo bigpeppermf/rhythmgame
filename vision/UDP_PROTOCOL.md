@@ -65,7 +65,7 @@ can retain the previous gesture for at most 100 ms since its last support only
 while the hand is still detected. Pinch has separate entry/release thresholds.
 
 FIST does not certify a specific camera-facing orientation. PINCH estimates
-thumb/index-tip proximity with the middle, ring, and little fingers curled and
+thumb/index-tip proximity with the middle, ring, and little fingers loosely curled and
 the index reaching toward the thumb (a closed-hand pinch). An open-hand OK sign
 is not PINCH. Both need real-camera validation. These fields report
 poses only; they do not report hits, presses, or rising-edge events. Godot owns

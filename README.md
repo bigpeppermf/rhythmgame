@@ -115,7 +115,7 @@ is uploaded. `--model path/to/hand_landmarker.task` points at another copy.
 
 Open palm is the normal input pose. The three action poses are **FIST**,
 **THUMBS_UP**, and **PINCH** (index finger and thumb tips together, with the
-middle, ring, and little fingers curled into the palm).
+middle, ring, and little fingers loosely curled).
 Enable gesture mode to distinguish these while continuing to track both positions.
 From an activated venv, run:
 
@@ -146,8 +146,9 @@ The same geometry works for either hand; image distances account for frame aspec
 PINCH primarily uses image-space thumb/index-tip separation relative to palm size,
 with world landmarks used for hand shape and a loose depth sanity check. It enters
 at gap <= 0.30 of palm size and can remain active to 0.45; the wider band cannot
-activate a new pinch. All three remaining fingers must show curled joints and
-fingertips returning toward the wrist. The index must reach toward the thumb
+activate a new pinch. All three remaining fingers must show bent joints, but
+their fingertips can stay farther out rather than tucking near the palm. Fully
+extended fingers are still rejected. The index must reach toward the thumb
 instead of being fully tucked into a fist. This specific closed-hand shape can
 override a canned fist label; an open-hand/OK-sign pinch is not accepted.
 UNKNOWN represents uncertain/unsupported poses; it is not forced to OPEN_PALM.
@@ -331,7 +332,7 @@ python -m unittest discover -s vision -v
 ```
 
 These need no webcam and no model file, so they are the fastest way to confirm a
-fresh setup on any platform. All 51 should pass.
+fresh setup on any platform. All 52 should pass.
 
 Reference: [MediaPipe Hand Landmarker Python guide](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python).
 

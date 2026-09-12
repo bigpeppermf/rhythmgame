@@ -48,12 +48,13 @@ def _extended(points, base):
 
 
 def _curled(points, base, scale):
-    """Positive curl evidence: bent joints and tip returning toward the wrist."""
+    """Accept a loose curl without requiring the tip to reach the palm."""
     chain = sum(dist(points[i], points[i + 1]) for i in range(base, base + 3))
+    # Keep positive bend evidence, but allow fingertips beyond the PIP joint.
+    # A straight supporting finger must still fail, even when angled sideways.
     return (chain >= 0.20 * scale
-            and _finger_extension(points, base) <= 0.70
-            and _angle(points[base], points[base + 1], points[base + 2]) <= 140
-            and dist(points[0], points[base + 3]) <= dist(points[0], points[base + 1]) * 1.05)
+            and _finger_extension(points, base) <= 0.85
+            and _angle(points[base], points[base + 1], points[base + 2]) <= 140)
 
 
 def measure_hand(world_landmarks=(), image_landmarks=(), aspect=1.0):

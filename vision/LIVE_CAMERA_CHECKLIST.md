@@ -148,10 +148,14 @@ Record a few diagnostic lines for each failed pose. No new model download is nee
   which orientations it accepts before deciding whether orientation gating is needed.
 - [ ] **Thumbs-up:** curl four fingers and point the thumb upward. Each hand
   reads THUMBS_UP instead of FIST, PINCH, or OPEN_PALM.
-- [ ] **Closed-hand pinch:** curl middle, ring, and little fingers into the palm,
+- [ ] **Closed-hand pinch:** loosely curl middle, ring, and little fingers,
   then reach the index fingertip toward the thumb tip until they touch.
   Each hand reads PINCH with `curled=3/3`. Repeat at near/far comfortable distances
   ten times.
+- [ ] **Loose pinch:** keep thumb/index touching and gradually uncurl the other
+  three fingers so their tips sit farther from the palm while their joints remain
+  bent. Each hand should retain PINCH and `curled=3/3`; fingertips no longer need
+  to tuck near the palm. Fully straightening a supporting finger should clear PINCH.
 - [ ] **Open-hand pinch rejection:** touch thumb/index tips with the other three
   fingers extended (an OK sign). Neither hand should read PINCH. Starting from a
   valid closed-hand pinch, extend each supporting finger separately; PINCH should
@@ -174,7 +178,8 @@ Record a few diagnostic lines for each failed pose. No new model download is nee
   packets return to the original fields without gesture data.
 
 The pinch score primarily describes image-space tip proximity with shape/depth
-checks; it cannot prove skin contact. All three supporting fingers must be curled,
+checks; it cannot prove skin contact. All three supporting fingers must be at
+least loosely curled; their tips do not need to reach the palm,
 and the index must reach away from its knuckle instead of tucking into a fist.
 New pinch entry requires a gap at most 0.30
 of palm size; the 0.30-0.45 band only retains an existing pinch to reduce flicker.

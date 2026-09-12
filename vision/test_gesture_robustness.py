@@ -20,7 +20,12 @@ def hand_shape(kind, mirror=1, scale=1, aspect=4 / 3):
         direction = -1 if kind == "thumb_up" else 1
         points[2:5] = [[-0.8, -0.35, 0], [-0.8, -0.35 + direction * 0.65, 0],
                        [-0.8, -0.35 + direction * 1.4, 0]]
-    if kind in ("pinch", "open_pinch"):
+    if kind == "loose_pinch":
+        for base in (9, 13, 17):
+            x, y, _ = points[base]
+            for offset, (dx, dy) in enumerate(((0, 0), (0, -0.4), (0.28, -0.6), (0.4, -0.5))):
+                points[base + offset] = [x + dx, y + dy, 0]
+    if kind in ("pinch", "open_pinch", "loose_pinch"):
         points[6:9] = [[-0.4, -1.2, 0], [-0.6, -1.3, 0], [-0.7, -1.2, 0]]
         points[2:5] = [[-0.55, -0.4, 0], [-0.8, -0.8, 0], [-0.69, -1.2, 0]]
     if kind == "fist":
@@ -32,6 +37,18 @@ def hand_shape(kind, mirror=1, scale=1, aspect=4 / 3):
 
 
 class GestureRobustnessTests(unittest.TestCase):
+    def test_loose_pinch_accepts_fingertips_beyond_palm(self):
+        for mirror in (-1, 1):
+            for scale in (0.4, 1.0):
+                for aspect in (4 / 3, 16 / 9):
+                    world, image = hand_shape("loose_pinch", mirror, scale, aspect)
+                    for shape_world, shape_image in ((world, image), (world, ()), ((), image)):
+                        with self.subTest(mirror=mirror, scale=scale, aspect=aspect,
+                                          world=bool(shape_world), image=bool(shape_image)):
+                            features = measure_hand(shape_world, shape_image, aspect)
+                            self.assertTrue(all(features["curled"][1:]))
+                            self.assertEqual(classify_gesture([], shape_world, shape_image, aspect).label, "PINCH")
+
     def test_closed_hand_pinch_accepts_both_hands_at_different_scales(self):
         for mirror in (-1, 1):
             for scale in (0.4, 1.0):
