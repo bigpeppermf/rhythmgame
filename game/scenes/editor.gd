@@ -14,6 +14,8 @@ extends Control
 ##   Ctrl+S          save                 P                playtest
 ##   J / K (hold)    record a note for L / R at the playhead, at the height
 ##                   your hand (or the mouse mock) is at. Hold for a hold.
+##                   Whatever gesture the hand is holding is recorded too.
+##   1-4 / 0         require open palm / fist / thumbs up / pinch; 0 = any
 ##   Esc             back
 ##
 ## Every edit goes through a method that takes beats and heights rather than
@@ -124,6 +126,15 @@ func set_length(n: Note, beats: float) -> void:
 	_edited()
 
 
+## Require a hand shape, or clear it with an empty name.
+func set_gesture(n: Note, gesture: StringName) -> void:
+	if n == null or n.gesture == gesture:
+		return
+	_snapshot()
+	n.gesture = gesture if gesture in Note.GESTURES else &""
+	_edited()
+
+
 func toggle_hold(n: Note) -> void:
 	if n == null:
 		return
@@ -140,6 +151,11 @@ func record_press(slot: int, beat: float, height: float) -> Note:
 	if _recording[slot] != null:
 		return _recording[slot]
 	var n := place(slot, beat, height)
+	# The hand's current shape becomes the requirement. UNKNOWN records
+	# nothing, so recording without --gestures produces plain notes.
+	var g: StringName = HandState.hands[slot].gesture
+	if g in Note.GESTURES:
+		n.gesture = g
 	_recording[slot] = n
 	return n
 
@@ -404,6 +420,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 				undo()
 		KEY_H:
 			toggle_hold(selected)
+		KEY_0: set_gesture(selected, &"")
+		KEY_1: set_gesture(selected, &"OPEN_PALM")
+		KEY_2: set_gesture(selected, &"FIST")
+		KEY_3: set_gesture(selected, &"THUMBS_UP")
+		KEY_4: set_gesture(selected, &"PINCH")
 		KEY_DELETE, KEY_BACKSPACE:
 			remove(selected)
 		KEY_P:
@@ -513,6 +534,9 @@ func _draw_notes(sk: GameSkin) -> void:
 				Color(c, 0.55))
 			draw_rect(Rect2(span.y - 2.0, y - NOTE_R, 4.0, NOTE_R * 2.0), Color(c, 0.9))
 		draw_circle(Vector2(span.x, y), NOTE_R, c)
+		if n.needs_gesture():
+			# Glyph beside the note: the roll is too small for silhouettes.
+			_text(_glyph(n.gesture), Vector2(span.x + NOTE_R + 3.0, y + 4.0), 11, c)
 		if sel:
 			draw_arc(Vector2(span.x, y), NOTE_R + 4.0, 0, TAU, 32, Color(1, 1, 1, 0.9), 1.5)
 			if n.kind == Note.Kind.HOLD:
@@ -559,8 +583,17 @@ func _draw_status(sk: GameSkin) -> void:
 		_text(_status, Vector2(12, y0 + 42), 13, sk.ui_warn)
 	else:
 		_text("click place   drag move   drag end hold   RMB/Del remove   Space play   " +
-			"S snap   H hold   J/K record L/R   Ctrl+Z undo   Ctrl+S save   P playtest   Esc back",
+			"S snap   H hold   1-4 gesture (0 any)   J/K record   Ctrl+Z undo   Ctrl+S save   P playtest   Esc back",
 			Vector2(12, y0 + 42), 12, sk.ui_faint)
+
+
+func _glyph(g: StringName) -> String:
+	match g:
+		&"OPEN_PALM": return "P"
+		&"FIST": return "F"
+		&"THUMBS_UP": return "T"
+		&"PINCH": return "N"
+		_: return ""
 
 
 func _say(msg: String) -> void:

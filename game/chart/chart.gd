@@ -55,6 +55,7 @@ static func from_dict(data: Dictionary) -> Chart:
 		n.slot = clampi(int(raw.get("slot", 0)), 0, 1)
 		n.kind = Note.kind_from_string(str(raw.get("type", "tap")))
 		n.length = float(raw.get("length", 0.0)) * spb
+		n.gesture = Note.gesture_from_string(str(raw.get("gesture", "")))
 		c.notes.append(n)
 	c.sort_notes()
 	return c
@@ -125,6 +126,8 @@ func to_dict() -> Dictionary:
 		}
 		if n.kind == Note.Kind.HOLD:
 			entry["length"] = snappedf(n.length / spb, 0.0001)
+		if n.needs_gesture():
+			entry["gesture"] = String(n.gesture)
 		out.append(entry)
 	return {
 		"title": title,

@@ -42,6 +42,7 @@ func _ready() -> void:
 	_run_idle(chart)
 	_run_holds_released(chart)
 	_run_parked(chart)
+	_run_gestures(chart)
 	_finish()
 
 
@@ -95,10 +96,56 @@ func _run_parked(chart: Chart) -> void:
 		res.counts[Note.Verdict.PERFECT])
 
 
+## A note that asks for a hand shape: full marks with it, capped at GOOD
+## without it, and not enforced at all while the input has never reported a
+## gesture (mouse mock, or a tracker run without --gestures).
+func _run_gestures(chart: Chart) -> void:
+	for n in chart.notes:
+		n.gesture = &"FIST" if n.kind == Note.Kind.TAP else &"THUMBS_UP"
+	var holds := 0
+	for n in chart.notes:
+		if n.kind == Note.Kind.HOLD:
+			holds += 1
+
+	HandState.gestures_seen = false
+	var res := _simulate(chart, true, 1.0, 0.005, &"UNKNOWN")
+	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size(),
+		"no gesture ever reported: requirements ignored, all PERFECT (%d)" %
+		res.counts[Note.Verdict.PERFECT])
+
+	HandState.gestures_seen = true
+	res = _simulate(chart, true, 1.0, 0.005, &"OPEN_PALM")
+	_check(res.counts[Note.Verdict.PERFECT] == 0 and res.counts[Note.Verdict.GOOD] == chart.notes.size(),
+		"wrong shape on every note: all capped at GOOD (P %d, G %d)" %
+		[res.counts[Note.Verdict.PERFECT], res.counts[Note.Verdict.GOOD]])
+	_check(res.counts[Note.Verdict.MISS] == 0, "wrong shape is never a MISS")
+
+	res = _simulate(chart, true, 1.0, 0.005, &"FIST")
+	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size() - holds
+		and res.counts[Note.Verdict.GOOD] == holds,
+		"fist satisfies the taps, caps the thumbs-up holds (P %d, G %d)" %
+		[res.counts[Note.Verdict.PERFECT], res.counts[Note.Verdict.GOOD]])
+
+	# Satisfied on ANY inside frame: a hand that shows the shape one frame in
+	# eight and UNKNOWN otherwise still gets full marks. The hand arrives 300ms
+	# early here - as a real hand does - so there are frames for the flicker
+	# to land in; with a 5ms lead a tap is inside for one frame only.
+	res = _simulate(chart, true, 1.0, 0.30, &"FIST", true)
+	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size() - holds,
+		"a single frame of the right shape is enough (P %d)" % res.counts[Note.Verdict.PERFECT])
+
+	HandState.gestures_seen = false
+	for n in chart.notes:
+		n.gesture = &""
+
+
 ## hold_ratio: fraction of each HOLD the synthetic hand stays inside for.
 ## lead: how long before a note the hand moves onto it.
+## gesture: what the synthetic hand reports; flicker: report it on one frame
+## in eight and UNKNOWN otherwise.
 func _simulate(chart: Chart, follow: bool, hold_ratio: float,
-		lead: float = 0.005) -> Dictionary:
+		lead: float = 0.005, gesture: StringName = &"UNKNOWN",
+		flicker: bool = false) -> Dictionary:
 	var judge := Judge.new()
 	add_child(judge)
 	var score := ScoreState.new()
@@ -112,12 +159,17 @@ func _simulate(chart: Chart, follow: bool, hold_ratio: float,
 
 	var t: float = -1.0
 	var limit: float = chart.duration() + Judge.WINDOW + 1.0
+	var frame := 0
 	while t < limit:
+		frame += 1
+		var g: StringName = gesture if (not flicker or frame % 8 == 0) else &"UNKNOWN"
 		if follow:
 			for slot in 2:
 				HandState.hands[slot].pos = _target(by_slot[slot], next, slot, t, hold_ratio, lead)
 				HandState.hands[slot].conf = 1.0
 				HandState.hands[slot].state = HandObservation.State.TRACKED
+				HandState.hands[slot].gesture = g
+				HandState.hands[slot].gesture_conf = 0.0 if g == &"UNKNOWN" else 0.9
 		else:
 			for slot in 2:
 				# Parked well outside the height range. Only height is judged,

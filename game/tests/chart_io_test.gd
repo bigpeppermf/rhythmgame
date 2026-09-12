@@ -62,6 +62,15 @@ func _test_roundtrip() -> void:
 	var warns := b.lint(2.0, Field3D.track)
 	_check(warns.size() == 1, "lint result survives the trip, got %d" % warns.size())
 
+	# The gesture field, when present, must come back exactly.
+	a.notes[0].gesture = &"PINCH"
+	a.notes[1].gesture = &"FIST"
+	a.save_to(OUT)
+	var g := Chart.load_from(OUT)
+	_check(g != null and g.notes[0].gesture == &"PINCH" and g.notes[1].gesture == &"FIST"
+		and not g.notes[2].needs_gesture(),
+		"gesture requirements round-trip (and absence stays absent)")
+
 
 ## A seek must land where asked and must not replay beats it jumped over.
 func _test_seek() -> void:

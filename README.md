@@ -401,10 +401,10 @@ webcam squatting on index 0 (Iriun, OBS, DroidCam) no longer breaks it; pass
 | `scenes/clock_test.tscn` | Conductor jitter/drift graph |
 
 ```bash
-godot --headless res://tests/judge_test.tscn   # 16 tests — chart, judging, scoring
+godot --headless res://tests/judge_test.tscn   # 21 tests — chart, judging, scoring, gestures
 godot --headless res://tests/flow_test.tscn    # 32 tests — scenes, settings, stats
 godot --headless res://tests/chart_io_test.tscn # 15 tests — round-trip, seek
-godot --headless res://tests/editor_test.tscn  # 34 tests — editor model, no mouse
+godot --headless res://tests/editor_test.tscn  # 41 tests — editor model, no mouse
 godot --headless res://tests/bridge_test.tscn  # game <- real vision encoder (start tools/vision_bridge_check.py first)
 godot res://tests/shot.tscn                    # render screenshots
 python3 ../tools/mock_sender.py --lose 3       # fake camera over real UDP

@@ -13,10 +13,12 @@ LANE = [0.29, 0.71]
 notes = []
 
 
-def n(beat, slot, y, kind="tap", length=0):
+def n(beat, slot, y, kind="tap", length=0, gesture=None):
     e = {"beat": beat, "slot": slot, "x": LANE[slot], "y": round(y, 3), "type": kind}
     if length:
         e["length"] = length
+    if gesture:
+        e["gesture"] = gesture   # required hand shape; absent means any
     notes.append(e)
 
 
@@ -32,16 +34,23 @@ for i in range(48):
     n(beat + i, slot, y)
 beat += 48
 
-# Section B - both hands on every beat, mirrored heights.
+# Section B - both hands on every beat, mirrored heights. Every fourth beat
+# asks for a fist, so the shape changes on the bar and nowhere else.
 for i in range(16):
     y = 0.5 + 0.25 * math.sin(i / 16 * math.tau)
-    n(beat + i, 0, y)
-    n(beat + i, 1, 1.0 - y)
+    g = "FIST" if i % 4 == 0 else None
+    n(beat + i, 0, y, gesture=g)
+    n(beat + i, 1, 1.0 - y, gesture=g)
 beat += 16
 
-# Section C - a few easy 2-beat holds, alternating.
+# Section C - easy 2-beat holds with a thumbs-up, alternating hands.
 for i in range(4):
-    n(beat + i * 4, i % 2, 0.5, "hold", 2)
+    n(beat + i * 4, i % 2, 0.5, "hold", 2, gesture="THUMBS_UP")
+beat += 16
+
+# Section D - pinches, one per bar, alternating, at mid height.
+for i in range(4):
+    n(beat + i * 4, i % 2, 0.5, gesture="PINCH")
 beat += 16
 
 notes.sort(key=lambda e: (e["beat"], e["slot"]))

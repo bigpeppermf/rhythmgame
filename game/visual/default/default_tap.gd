@@ -1,13 +1,10 @@
 extends NoteView
-## Placeholder tap: a flat dash lying on the panel.
+## Placeholder tap: a shape lying on the panel, chosen by the note's gesture.
 ##
 ## The playfield sets this node's basis to the panel's, so local -Z runs away
-## down the panel and +Y is up. A dash is therefore just a box that is long in
-## Z, thin in Y, and barely there in X.
+## down the panel and +Y is up. See note_shapes.gd for the silhouettes.
 
-const LENGTH := 1.5
-const THICK := 0.30
-const DEPTH := 0.10
+const NoteShapes := preload("res://visual/default/note_shapes.gd")
 
 var _mesh: MeshInstance3D
 var _color: Color
@@ -15,14 +12,13 @@ var _color: Color
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
-	var b := BoxMesh.new()
-	b.size = Vector3(DEPTH, THICK, LENGTH)
-	_mesh.mesh = b
 	add_child(_mesh)
 
 
 func configure(note: Note, skin: GameSkin) -> void:
 	_color = skin.slot_color(note.slot)
+	_mesh.mesh = NoteShapes.head_mesh(note.gesture)
+	_mesh.rotation_degrees = NoteShapes.head_rotation(note.gesture)
 	visible = true
 
 

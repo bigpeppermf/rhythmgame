@@ -72,9 +72,15 @@ UTF-8 JSON, one object per datagram. Target < 512 bytes.
 | `gesture` | string | *Optional.* Sent only when the tracker runs with `--gestures`. One of the labels in `vision/gestures.py` (`VALID_GESTURES`), or `UNKNOWN`. A non-`TRACKED` hand is always `UNKNOWN`. |
 | `gesture_conf` | float | *Optional, paired with `gesture`.* `[0,1]`; `UNKNOWN` carries `0`. |
 
-The game reads the gesture fields into `HandObservation` and shows them on the
-HUD, but does not judge on them yet. Absent fields mean `UNKNOWN`, which is
-exactly what a sender without the feature means, so older senders stay valid.
+The game reads the gesture fields into `HandObservation`. A chart note may
+carry `"gesture"` (one of the labels above); the Judge treats it like
+position — satisfied if the hand held that shape on **any** frame while inside
+the note's window, so a one-frame classifier flicker cannot fail it. Right
+place and time but the wrong shape caps the verdict at GOOD
+(`Judge.WRONG_GESTURE_CAP`). If the input has never reported a gesture in the
+session (mouse mock, or a tracker run without `--gestures`), requirements are
+ignored and the HUD says so. Absent fields mean `UNKNOWN`, so older senders
+stay valid.
 
 ### Rules both sides rely on
 

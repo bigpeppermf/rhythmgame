@@ -5,16 +5,20 @@ extends NoteView
 ## merely retinted - exactly the kind of thing a custom skin may want to do
 ## differently (a stretched texture, a shader, a trail).
 
+const NoteShapes := preload("res://visual/default/note_shapes.gd")
 const THICK := 0.34
 const DEPTH := 0.12
 
 var _mesh: MeshInstance3D
+var _head: MeshInstance3D
 var _color: Color
 
 
 func _ready() -> void:
 	_mesh = MeshInstance3D.new()
 	add_child(_mesh)
+	_head = MeshInstance3D.new()
+	add_child(_head)
 
 
 func configure(note: Note, skin: GameSkin) -> void:
@@ -26,6 +30,11 @@ func configure(note: Note, skin: GameSkin) -> void:
 	# Anchor the near end at the note's own moment; the body trails behind it
 	# up the panel, so the head is what the player aims at.
 	_mesh.position.z = -length * 0.5
+	# The head carries the gesture silhouette; a plain hold has no head.
+	_head.visible = note.needs_gesture()
+	if _head.visible:
+		_head.mesh = NoteShapes.head_mesh(note.gesture)
+		_head.rotation_degrees = NoteShapes.head_rotation(note.gesture)
 	visible = true
 
 
@@ -33,4 +42,6 @@ func update_view(approach: float, progress: float) -> void:
 	var c := _color
 	c.a = clampf(1.15 - approach, 0.25, 1.0)
 	c = c.lerp(Color(1, 1, 1, c.a), progress * 0.7)
-	_mesh.material_override = Emissive.make(c)
+	var m := Emissive.make(c)
+	_mesh.material_override = m
+	_head.material_override = m

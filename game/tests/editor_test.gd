@@ -104,6 +104,29 @@ func _ready() -> void:
 	_check(h.kind == Note.Kind.HOLD and is_equal_approx(ed.chart.length_beats(h), 2.0),
 		"a release with nothing recording is ignored")
 
+	# ── gestures ────────────────────────────────────────────────────────────
+	var gnote: Note = ed.place(0, 60.0, 0.5)
+	_check(not gnote.needs_gesture(), "a placed note requires no gesture by default")
+	ed.set_gesture(gnote, &"FIST")
+	_check(gnote.gesture == &"FIST", "set_gesture requires a fist")
+	ed.set_gesture(gnote, &"NOT_A_GESTURE")
+	_check(gnote.gesture == &"", "an unknown gesture name clears the requirement")
+	ed.set_gesture(gnote, &"PINCH")
+	ed.undo()
+	# Undo restores a snapshot, so every Note is a fresh object afterwards and
+	# the old reference is stale. Look the note up again by where it is.
+	gnote = _note_at(60.0, 0)
+	_check(gnote != null and gnote.gesture == &"", "gesture changes are undoable")
+	HandState.hands[1].gesture = &"THUMBS_UP"
+	var rec: Note = ed.record_press(1, 62.0, 0.4)
+	ed.record_release(1, 62.1)
+	_check(rec.gesture == &"THUMBS_UP", "record captures the hand's current gesture")
+	HandState.hands[1].gesture = &"UNKNOWN"
+	var rec2: Note = ed.record_press(1, 64.0, 0.4)
+	ed.record_release(1, 64.1)
+	_check(not rec2.needs_gesture(), "record with no gesture reported stays plain")
+	ed.set_gesture(gnote, &"FIST")
+
 	# ── save round trip ─────────────────────────────────────────────────────
 	ed.snap_index = 2
 	ed.place(0, 40.0, 0.5)
@@ -112,8 +135,20 @@ func _ready() -> void:
 	var back := Chart.load_from("user://editor_test.json")
 	_check(back != null and back.notes.size() == ed.chart.notes.size(),
 		"saved chart reloads with %d notes" % (back.notes.size() if back else -1))
+	var fists := 0
+	for bn in back.notes:
+		if bn.gesture == &"FIST":
+			fists += 1
+	_check(fists == 1, "the gesture requirement survives save and reload (%d fist)" % fists)
 
 	_finish()
+
+
+func _note_at(beat: float, slot: int) -> Note:
+	for n in ed.chart.notes:
+		if n.slot == slot and absf(ed.chart.beat_of(n) - beat) < 0.01:
+			return n
+	return null
 
 
 func _sorted() -> bool:

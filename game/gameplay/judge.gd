@@ -31,6 +31,15 @@ const GREAT_RADIUS := 0.060
 
 ## A HOLD must be entered within this of its start or it is a miss outright.
 const HOLD_GRAB := 0.15
+
+## Minimum classifier confidence for a hand shape to count.
+const GESTURE_CONF := 0.5
+## Right place, right time, wrong hand shape: the verdict can be no better
+## than this. GOOD rather than MISS because the classifier is wrong on the
+## order of one frame in ten, and a miss for a reason the player cannot see
+## reads as the game being broken. Set to Note.Verdict.MISS to make the
+## gesture the whole note.
+const WRONG_GESTURE_CAP := Note.Verdict.GOOD
 ## Fraction of a hold that must be held to count as hit at all.
 const HOLD_PASS := 0.5
 
@@ -72,6 +81,8 @@ func _admit(now: float) -> void:
 func _evaluate(n: Note, now: float, delta: float) -> bool:
 	var hand: HandObservation = HandState.hands[n.slot]
 	var inside: bool = hand.is_usable() and _distance(n) <= HIT_RADIUS
+	if inside and not n._gesture_ok and n.needs_gesture():
+		n._gesture_ok = hand.gesture == n.gesture and hand.gesture_conf >= GESTURE_CONF
 
 	if n.kind == Note.Kind.HOLD:
 		return _evaluate_hold(n, now, delta, hand, inside)
@@ -97,14 +108,14 @@ func _evaluate(n: Note, now: float, delta: float) -> bool:
 			n.timing_error = dt
 			n.hit_distance = _distance(n)
 		if now >= n.time:
-			n.verdict = _grade(absf(n.timing_error), n.hit_distance)
+			n.verdict = _cap(n, _grade(absf(n.timing_error), n.hit_distance))
 			note_judged.emit(n)
 			return false
 
 	if now > n.time + GOOD_TIME:
 		# Touched at some point but never while on the beat: grade the best
 		# approach we saw. Never touched at all: miss.
-		n.verdict = _grade(absf(n.timing_error), n.hit_distance) if n._entered \
+		n.verdict = _cap(n, _grade(absf(n.timing_error), n.hit_distance)) if n._entered \
 			else Note.Verdict.MISS
 		if not n._entered:
 			n.timing_error = GOOD_TIME
@@ -145,10 +156,22 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 			n.verdict = Note.Verdict.GREAT
 		else:
 			n.verdict = Note.Verdict.GOOD
+		n.verdict = _cap(n, n.verdict)
 		note_judged.emit(n)
 		return false
 
 	return true
+
+
+## Apply the wrong-shape cap. Requirements are only enforced once the input
+## has reported a gesture at all - see HandState.gestures_seen.
+func _cap(n: Note, v: Note.Verdict) -> Note.Verdict:
+	if v == Note.Verdict.MISS or not n.needs_gesture() or not HandState.gestures_seen:
+		return v
+	if n._gesture_ok:
+		return v
+	# Verdict enum ascends PENDING, PERFECT, GREAT, GOOD, MISS: worse is larger.
+	return maxi(v, WRONG_GESTURE_CAP) as Note.Verdict
 
 
 ## How far the hand is from the note, along the one axis that is charted.

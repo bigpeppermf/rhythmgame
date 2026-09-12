@@ -14,6 +14,12 @@ var slot: int = 0
 var kind: Kind = Kind.TAP
 ## HOLD only: how long the hand must stay inside, in seconds.
 var length: float = 0.0
+## Hand shape the note asks for: one of GESTURES, or empty for any. Judged the
+## same way as position - satisfied if the hand held it on ANY frame while
+## inside the note's window - so a one-frame classifier flicker cannot fail it.
+var gesture: StringName = &""
+
+const GESTURES: Array[StringName] = [&"OPEN_PALM", &"FIST", &"THUMBS_UP", &"PINCH"]
 
 # ── Runtime judging state. Reset by Chart.rewind(). ──────────────────────────
 var verdict: Verdict = Verdict.PENDING
@@ -24,6 +30,8 @@ var timing_error: float = 0.0
 ## Distance from note centre when hit. Lower is better.
 var hit_distance: float = 0.0
 var _entered: bool = false
+## Runtime: the required gesture was seen while the hand was inside.
+var _gesture_ok: bool = false
 
 
 func end_time() -> float:
@@ -40,6 +48,16 @@ func reset() -> void:
 	timing_error = 0.0
 	hit_distance = 0.0
 	_entered = false
+	_gesture_ok = false
+
+
+func needs_gesture() -> bool:
+	return gesture != &""
+
+
+static func gesture_from_string(s: String) -> StringName:
+	var g := StringName(s.to_upper())
+	return g if g in GESTURES else &""
 
 
 static func kind_from_string(s: String) -> Kind:

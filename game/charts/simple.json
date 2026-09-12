@@ -345,14 +345,16 @@
    "slot": 0,
    "x": 0.29,
    "y": 0.5,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 52,
    "slot": 1,
    "x": 0.71,
    "y": 0.5,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 53,
@@ -401,14 +403,16 @@
    "slot": 0,
    "x": 0.29,
    "y": 0.75,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 56,
    "slot": 1,
    "x": 0.71,
    "y": 0.25,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 57,
@@ -457,14 +461,16 @@
    "slot": 0,
    "x": 0.29,
    "y": 0.5,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 60,
    "slot": 1,
    "x": 0.71,
    "y": 0.5,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 61,
@@ -513,14 +519,16 @@
    "slot": 0,
    "x": 0.29,
    "y": 0.25,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 64,
    "slot": 1,
    "x": 0.71,
    "y": 0.75,
-   "type": "tap"
+   "type": "tap",
+   "gesture": "FIST"
   },
   {
    "beat": 65,
@@ -570,7 +578,8 @@
    "x": 0.29,
    "y": 0.5,
    "type": "hold",
-   "length": 2
+   "length": 2,
+   "gesture": "THUMBS_UP"
   },
   {
    "beat": 72,
@@ -578,7 +587,8 @@
    "x": 0.71,
    "y": 0.5,
    "type": "hold",
-   "length": 2
+   "length": 2,
+   "gesture": "THUMBS_UP"
   },
   {
    "beat": 76,
@@ -586,7 +596,8 @@
    "x": 0.29,
    "y": 0.5,
    "type": "hold",
-   "length": 2
+   "length": 2,
+   "gesture": "THUMBS_UP"
   },
   {
    "beat": 80,
@@ -594,7 +605,40 @@
    "x": 0.71,
    "y": 0.5,
    "type": "hold",
-   "length": 2
+   "length": 2,
+   "gesture": "THUMBS_UP"
+  },
+  {
+   "beat": 84,
+   "slot": 0,
+   "x": 0.29,
+   "y": 0.5,
+   "type": "tap",
+   "gesture": "PINCH"
+  },
+  {
+   "beat": 88,
+   "slot": 1,
+   "x": 0.71,
+   "y": 0.5,
+   "type": "tap",
+   "gesture": "PINCH"
+  },
+  {
+   "beat": 92,
+   "slot": 0,
+   "x": 0.29,
+   "y": 0.5,
+   "type": "tap",
+   "gesture": "PINCH"
+  },
+  {
+   "beat": 96,
+   "slot": 1,
+   "x": 0.71,
+   "y": 0.5,
+   "type": "tap",
+   "gesture": "PINCH"
   }
  ]
 }

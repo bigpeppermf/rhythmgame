@@ -25,6 +25,11 @@ var hands: Array[HandObservation] = []
 var source: HandSource = null
 ## Switch to the camera automatically when its packets appear.
 var auto_switch: bool = true
+## True once any hand has reported a real gesture. Until then, notes that ask
+## for a gesture do not enforce it: a tracker run without --gestures, or the
+## mouse mock, would otherwise cap every such note for a reason the player
+## cannot see.
+var gestures_seen: bool = false
 
 var _udp: UdpHandSource
 var _mock: MockHandSource
@@ -73,6 +78,12 @@ func _process(delta: float) -> void:
 
 	var before: Array[float] = [hands[0].t_capture, hands[1].t_capture]
 	source.poll(hands)
+
+	if not gestures_seen:
+		for h in hands:
+			if h.gesture != &"UNKNOWN":
+				gestures_seen = true
+				break
 
 	# Age each sample. A source running at 60Hz feeding a 144Hz renderer leaves
 	# us holding the same observation for two or three frames; without this the

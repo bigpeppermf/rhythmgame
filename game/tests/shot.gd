@@ -7,7 +7,7 @@ extends Node
 ## that frame. Driving them from the capture coroutine instead put them a
 ## frame behind and the synthetic player missed almost everything.
 const OUT := "user://shots"
-const AT := [9.0, 13.2, 17.6]   # taps, holds, simultaneous
+const AT := [27.0, 35.5, 43.0]   # fists on the bar, thumbs-up holds, pinches
 
 ## Override the skin, to prove a swap needs no gameplay changes.
 static var skin_override := ""
@@ -19,7 +19,7 @@ func _ready() -> void:
 	process_priority = -50
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	field = load("res://scenes/play_3d.tscn").instantiate()
-	field.chart_path = "res://charts/test.json"
+	field.chart_path = "res://charts/simple.json"
 	if not skin_override.is_empty():
 		field.skin_path = skin_override
 	add_child(field)

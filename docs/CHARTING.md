@@ -14,7 +14,8 @@ The editor's shape falls out of four facts about the game:
 2. **Each hand has one vertical lane.** `x` is pinned to the lane centre and
    carries no information — so the editor never asks for it. You pick a hand
    and a **height**.
-3. **Two kinds:** tap, and hold with a duration in beats.
+3. **Two kinds:** tap, and hold with a duration in beats. Either may also
+   require a **hand shape** — open palm, fist, thumbs-up, pinch — or none.
 4. **Difficulty is travel distance, not density.** Two notes 80 ms apart at the
    same height are trivial; two notes 400 ms apart at opposite heights may be
    impossible.
@@ -93,6 +94,10 @@ much smaller and more reliable job.
 5. ✅ Live lint overlay — flagged pairs drawn in place as red connectors
 6. ✅ Record mode — hold `J` / `K` while playing; height comes from HandState, so
    the camera records what your hand actually did. Hold the key for a hold.
+   Whatever shape the hand is holding is recorded as the requirement.
+8. ✅ Gestures — `1`–`4` require open palm / fist / thumbs-up / pinch on the
+   selected note, `0` clears it. The roll shows a P/F/T/N glyph beside the note;
+   the game shows a distinct silhouette per shape.
 7. ✅ Playtest hand-off — `P` saves and plays the in-memory chart; results
    return you to the editor
 

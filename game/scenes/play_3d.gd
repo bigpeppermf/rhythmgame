@@ -220,7 +220,10 @@ func _update_hud() -> void:
 		lines.append(_preview.status())
 	var g0: HandObservation = HandState.hands[0]
 	var g1: HandObservation = HandState.hands[1]
-	if g0.gesture != &"UNKNOWN" or g1.gesture != &"UNKNOWN":
-		lines.append("gesture: L %s %.2f   R %s %.2f" %
-			[g0.gesture, g0.gesture_conf, g1.gesture, g1.gesture_conf])
+	if HandState.gestures_seen:
+		lines.append("gestures: L %s %.2f   R %s %.2f   (wrong shape caps at %s)" %
+			[g0.gesture, g0.gesture_conf, g1.gesture, g1.gesture_conf,
+			Note.verdict_name(Judge.WRONG_GESTURE_CAP)])
+	else:
+		lines.append("gestures: not reported - shape requirements ignored (mock: keys 1-4)")
 	_hud.text = "\n".join(lines)
