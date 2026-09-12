@@ -123,5 +123,10 @@ song time. All fixed pipeline delay is absorbed by a single calibrated
 python3 tools/mock_sender.py --pattern circle
 
 # Vision side: no game needed
-python3 -m vision.main --debug --no-emit
+uv run vision/vertical_demo.py --debug --no-udp
+
+# Vision side: watch the packets without Godot
+uv run vision/udp_receiver.py
 ```
+
+See the [README](README.md) for setup on macOS, Linux and Windows.
