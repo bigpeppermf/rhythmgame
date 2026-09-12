@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GameSkin" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://visual/game_skin.gd" id="1_skin"]
+[ext_resource type="PackedScene" path="res://visual/default/default_tap.tscn" id="2_tap"]
+[ext_resource type="PackedScene" path="res://visual/default/default_hold.tscn" id="3_hold"]
+[ext_resource type="PackedScene" path="res://visual/default/default_cursor.tscn" id="4_cursor"]
+[ext_resource type="PackedScene" path="res://visual/default/default_flash.tscn" id="5_flash"]
+
+[resource]
+script = ExtResource("1_skin")
+tap_scene = ExtResource("2_tap")
+hold_scene = ExtResource("3_hold")
+cursor_scene = ExtResource("4_cursor")
+flash_scene = ExtResource("5_flash")

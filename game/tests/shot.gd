@@ -9,6 +9,9 @@ extends Node
 const OUT := "user://shots"
 const AT := [9.0, 13.2, 17.6]   # taps, holds, simultaneous
 
+## Override the skin, to prove a swap needs no gameplay changes.
+static var skin_override := ""
+
 var field: Node
 
 
@@ -16,6 +19,8 @@ func _ready() -> void:
 	process_priority = -50
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	field = load("res://scenes/play_3d.tscn").instantiate()
+	if not skin_override.is_empty():
+		field.skin_path = skin_override
 	add_child(field)
 	HandState.source = null
 	await get_tree().process_frame
@@ -26,7 +31,7 @@ func _ready() -> void:
 			await get_tree().process_frame
 		for _w in 3:
 			await RenderingServer.frame_post_draw
-		var path := "%s/play_%d.png" % [OUT, i]
+		var path := "%s/%s%d.png" % [OUT, "alt_" if not skin_override.is_empty() else "play_", i]
 		get_viewport().get_texture().get_image().save_png(path)
 		print("wrote %s   score=%d miss=%d" % [
 			ProjectSettings.globalize_path(path), field.score.score,
