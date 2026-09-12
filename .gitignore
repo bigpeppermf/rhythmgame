@@ -10,8 +10,8 @@ export_presets.cfg
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
-venv/
+.venv*/
+venv*/
 env/
 .pytest_cache/
 

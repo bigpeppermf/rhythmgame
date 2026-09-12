@@ -37,21 +37,107 @@ Each hand now has persistent TRACKED/COASTING/LOST state and velocity.
 The demo now sends both slots as JSON over UDP to 127.0.0.1:5005 by default.
 A Python diagnostic receiver is included; Godot integration is owned by gameplay.
 
-## Run the palm tracker
+## Setup (once per machine)
 
-From the `rhythmgame` directory in PowerShell:
+We are a cross-platform team: macOS, Linux, and Windows all work. Run everything
+from the `rhythmgame` directory. Pick **one** of the two routes below — they
+produce the same `.venv`.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r vision/requirements.txt
-.\.venv\Scripts\python.exe vision/download_model.py
-.\.venv\Scripts\python.exe vision/vertical_demo.py
+Neither `.venv/` nor `vision/models/` is committed (both are in `.gitignore`), so
+a fresh clone never arrives with them. Everyone runs this once.
+
+### Route A — uv (recommended: one set of commands on all three platforms)
+
+```bash
+uv venv
+uv pip install -r vision/requirements.txt
+uv run vision/download_model.py
 ```
 
-Dependencies and the model are already installed in this checkout's `.venv`.
-Use that Python executable rather than the system Python. Model download is
-one-time setup; inference processes camera frames locally. The downloaded model
-is ignored by Git. `--model path/to/hand_landmarker.task` selects another copy.
+If you don't have uv yet:
+
+| Platform | Install uv |
+|---|---|
+| macOS / Linux | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Windows (PowerShell) | `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| Homebrew | `brew install uv` |
+
+`uv venv` downloads a suitable CPython for you if the system one is too old or
+missing, which is why the commands don't change per OS. `uv run` discovers
+`.venv` by itself — there is nothing to activate.
+
+### Route B — stock Python and pip
+
+**macOS / Linux** (needs Python 3.10+; on Debian/Ubuntu also `sudo apt install python3-venv`):
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r vision/requirements.txt
+.venv/bin/python vision/download_model.py
+```
+
+**Windows (PowerShell)**:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r vision/requirements.txt
+.\.venv\Scripts\python.exe vision/download_model.py
+```
+
+Use that venv Python, never the system Python — recent macOS and Ubuntu refuse
+system-wide `pip install` outright (PEP 668, "externally-managed-environment").
+
+### How to read the commands in the rest of this README
+
+Later sections write plain `python vision/...`. Make that work in either of two
+ways, whichever you prefer:
+
+- prefix every command with `uv run` (`uv run vision/vertical_demo.py`), or
+- activate the venv once per terminal, then use `python` directly:
+
+| Shell | Activate |
+|---|---|
+| bash / zsh (macOS, Linux) | `source .venv/bin/activate` |
+| fish | `source .venv/bin/activate.fish` |
+| PowerShell (Windows) | `.\.venv\Scripts\Activate.ps1` |
+| cmd.exe (Windows) | `.\.venv\Scripts\activate.bat` |
+
+If PowerShell blocks the activation script, run
+`Set-ExecutionPolicy -Scope Process RemoteSigned` in that window first, or just
+use `uv run` and skip activation entirely.
+
+The model download is one-time. Inference runs locally on your machine; nothing
+is uploaded. `--model path/to/hand_landmarker.task` points at another copy.
+
+## Run the palm tracker
+
+```bash
+python vision/vertical_demo.py
+# or, without activating: uv run vision/vertical_demo.py
+```
+
+### Choosing the camera
+
+`--camera 0` is the default, and it is **not** always the camera you want.
+Virtual cameras (Iriun, OBS, Camo, EpocCam, Snap) tend to claim a low index and
+fail to open when their app or phone is not streaming. That shows up as:
+
+```
+Input demo failed: Cannot open input. Close other camera apps or try --camera 1.
+```
+
+Work up through `--camera 1`, `--camera 2` until you see yourself in the debug
+window (**D**). Per platform:
+
+- **Linux** — `v4l2-ctl --list-devices` maps indices to devices. On this
+  checkout's machine index 0 is an Iriun `v4l2loopback` device and the built-in
+  webcam is **index 1**, so the demo needs `--camera 1`.
+- **macOS** — the first run must be allowed under System Settings → Privacy &
+  Security → Camera for *the terminal app you launched from* (Terminal, iTerm,
+  VS Code), not for Python itself. Without that approval the device opens but
+  every frame is black.
+- **Windows** — quit Zoom/Teams/OBS first; most webcams allow only one
+  DirectShow consumer at a time.
 
 1. Face the webcam and show both open palms with your fingers visible.
 2. Raise only your left palm: the left cursor should move up. Repeat with the
@@ -121,9 +207,13 @@ Exposure and buffering still need hardware tuning.
 
 Camera-free tests use synthetic landmark results and controlled capture timestamps:
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s vision -v
+```bash
+python -m unittest discover -s vision -v
+# or: uv run python -m unittest discover -s vision -v
 ```
+
+These need no webcam and no model file, so they are the fastest way to confirm a
+fresh setup on any platform. All 21 should pass.
 
 Reference: [MediaPipe Hand Landmarker Python guide](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python).
 
@@ -131,8 +221,9 @@ Reference: [MediaPipe Hand Landmarker Python guide](https://ai.google.dev/edge/m
 
 In one terminal, from `rhythmgame`, run:
 
-```powershell
-.\.venv\Scripts\python.exe vision/udp_receiver.py
+```bash
+python vision/udp_receiver.py
+# or: uv run vision/udp_receiver.py
 ```
 
 In another, run the demo normally. The receiver prints both hand states and
