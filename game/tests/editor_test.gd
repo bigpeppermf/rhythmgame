@@ -86,6 +86,23 @@ func _ready() -> void:
 	ed.pause()
 	_check(not ed.playing() and ed.playhead_beat() >= 15.9, "pause keeps the position")
 
+	# ── record mode ─────────────────────────────────────────────────────────
+	ed.snap_index = 2
+	var count_before: int = ed.chart.notes.size()
+	var r: Note = ed.record_press(1, 44.13, 0.33)
+	_check(ed.chart.notes.size() == count_before + 1 and is_equal_approx(ed.chart.beat_of(r), 44.25)
+		and is_equal_approx(r.pos.y, 0.33), "record press places a snapped note at the hand's height")
+	_check(ed.record_press(1, 44.5, 0.9) == r, "a second press while held does not place again")
+	ed.record_release(1, 44.30)
+	_check(r.kind == Note.Kind.TAP, "a quick press records a tap")
+	var h: Note = ed.record_press(0, 46.0, 0.5)
+	ed.record_release(0, 48.05)
+	_check(h.kind == Note.Kind.HOLD and is_equal_approx(ed.chart.length_beats(h), 2.0),
+		"holding the key records a 2-beat hold")
+	ed.record_release(0, 99.0)
+	_check(h.kind == Note.Kind.HOLD and is_equal_approx(ed.chart.length_beats(h), 2.0),
+		"a release with nothing recording is ignored")
+
 	# ── save round trip ─────────────────────────────────────────────────────
 	ed.snap_index = 2
 	ed.place(0, 40.0, 0.5)

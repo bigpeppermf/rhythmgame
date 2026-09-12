@@ -12,6 +12,8 @@ extends Control
 ##   wheel           scroll               Ctrl+wheel       zoom
 ##   S               cycle snap           Ctrl+Z           undo
 ##   Ctrl+S          save                 P                playtest
+##   J / K (hold)    record a note for L / R at the playhead, at the height
+##                   your hand (or the mouse mock) is at. Hold for a hold.
 ##   Esc             back
 ##
 ## Every edit goes through a method that takes beats and heights rather than
@@ -47,6 +49,8 @@ var _drag_note: Note = null
 var _drag_grab_offset := 0.0
 var _status := ""
 var _status_until := 0.0
+## Notes currently being recorded, per slot, while the record key is held.
+var _recording: Array = [null, null]
 var _esc_armed_until := 0.0
 var _font: Font
 var _stream: AudioStream
@@ -125,6 +129,29 @@ func toggle_hold(n: Note) -> void:
 		return
 	_snapshot()
 	set_length(n, 0.0 if n.kind == Note.Kind.HOLD else 1.0)
+
+
+# ── record mode ──────────────────────────────────────────────────────────────
+# Height comes from HandState - the same input the game judges - so recording
+# with the camera charts what your hand actually did, and the mouse mock works
+# the same way. Beat comes from the playhead. Hold the key and you get a hold.
+
+func record_press(slot: int, beat: float, height: float) -> Note:
+	if _recording[slot] != null:
+		return _recording[slot]
+	var n := place(slot, beat, height)
+	_recording[slot] = n
+	return n
+
+
+func record_release(slot: int, beat: float) -> void:
+	var n: Note = _recording[slot]
+	if n == null:
+		return
+	_recording[slot] = null
+	# set_length collapses anything under half a snap step back to a tap, so a
+	# quick press is a tap and only a real hold becomes one.
+	set_length(n, beat - chart.beat_of(n))
 
 
 func undo() -> bool:
@@ -335,9 +362,21 @@ func _mouse_drag(p: Vector2) -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if not (event is InputEventKey and event.pressed):
+	if not (event is InputEventKey):
 		return
 	var k: int = event.keycode
+	var rec_slot: int = 0 if k == KEY_J else (1 if k == KEY_K else -1)
+	if rec_slot >= 0:
+		if event.echo:
+			return
+		if event.pressed:
+			record_press(rec_slot, playhead_beat(), HandState.cursor(rec_slot).y)
+		else:
+			record_release(rec_slot, playhead_beat())
+		queue_redraw()
+		return
+	if not event.pressed:
+		return
 	var ctrl: bool = event.ctrl_pressed or event.meta_pressed
 	if event.echo and k != KEY_LEFT and k != KEY_RIGHT:
 		return
@@ -389,6 +428,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if playing():
 		_ensure_visible(playhead_beat())
+		for slot in 2:
+			var n: Note = _recording[slot]
+			if n != null:
+				chart.set_length_beats(n, maxf(playhead_beat() - chart.beat_of(n), 0.0))
 		queue_redraw()
 
 
@@ -516,7 +559,7 @@ func _draw_status(sk: GameSkin) -> void:
 		_text(_status, Vector2(12, y0 + 42), 13, sk.ui_warn)
 	else:
 		_text("click place   drag move   drag end hold   RMB/Del remove   Space play   " +
-			"S snap   H hold   Ctrl+Z undo   Ctrl+S save   P playtest   Esc back",
+			"S snap   H hold   J/K record L/R   Ctrl+Z undo   Ctrl+S save   P playtest   Esc back",
 			Vector2(12, y0 + 42), 12, sk.ui_faint)
 
 

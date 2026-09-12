@@ -91,13 +91,14 @@ much smaller and more reliable job.
 3. ✅ Click to place and delete taps, with snap (1/1 1/2 1/4 1/3 1/6 off)
 4. ✅ Drag to move; drag a note's end to make it a hold; `H` toggles
 5. ✅ Live lint overlay — flagged pairs drawn in place as red connectors
-6. ⬜ Record mode
+6. ✅ Record mode — hold `J` / `K` while playing; height comes from HandState, so
+   the camera records what your hand actually did. Hold the key for a hold.
 7. ✅ Playtest hand-off — `P` saves and plays the in-memory chart; results
    return you to the editor
 
 All of it lives in `game/scenes/editor.gd`. Every edit goes through a method
 that takes beats and heights rather than pixels, which is what lets
-`tests/editor_test.tscn` drive the whole model headless — 29 checks, no mouse.
+`tests/editor_test.tscn` drive the whole model headless — 34 checks, no mouse.
 
 Open it from the menu (**Edit chart**) or run `res://scenes/editor.tscn`
 directly. It edits `res://charts/test.json`; change `chart_path` for another.

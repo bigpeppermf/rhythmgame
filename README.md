@@ -320,7 +320,7 @@ cd game && godot .        # F5 — menu → play → results
 godot --headless res://tests/judge_test.tscn   # 16 tests — chart, judging, scoring
 godot --headless res://tests/flow_test.tscn    # 32 tests — scenes, settings, stats
 godot --headless res://tests/chart_io_test.tscn # 15 tests — round-trip, seek
-godot --headless res://tests/editor_test.tscn  # 29 tests — editor model, no mouse
+godot --headless res://tests/editor_test.tscn  # 34 tests — editor model, no mouse
 godot --headless res://tests/bridge_test.tscn  # game <- real vision encoder (start tools/vision_bridge_check.py first)
 godot res://tests/shot.tscn                    # render screenshots
 python3 ../tools/mock_sender.py --lose 3       # fake camera over real UDP
@@ -347,3 +347,18 @@ What survives is jitter, which is small enough to live with.
 `scenes/calibrate.tscn` measures it — two targets alternate on every beat, so
 the pattern is predictable and the player anticipates rather than reacts. The
 median of ~20 swings becomes `Settings.input_offset`.
+
+## Gotchas that have cost us time
+
+- **Adding a `class_name` (or switching branches that change them) makes the
+  class invisible until the editor rebuilds its cache.** The symptom is
+  `Identifier "X" not declared` in every *consumer* of the class, with nothing
+  pointing at the cause. Fix: open the editor once, or
+  `godot --headless --editor --quit-after 4000` from `game/`.
+- **`Skin` is a native Godot class.** Shadowing a native name fails the parse
+  with a misleading cascade — hence `GameSkin`.
+- **Vision runs on 5005 (hands) and 5006 (preview).** The game listens on the
+  same. `PROTOCOL.md` is the contract; change it there first.
+- On Wayland desktops the game window is XWayland, so X11 screenshot tools
+  return a stale image. The `tests/shot_*.tscn` harnesses capture from inside
+  Godot instead and are the reliable way to see a scene without watching it.
