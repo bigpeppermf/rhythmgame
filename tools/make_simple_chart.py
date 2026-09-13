@@ -56,6 +56,6 @@ beat += 16
 notes.sort(key=lambda e: (e["beat"], e["slot"]))
 with open(OUT, "w") as f:
     json.dump({"title": "Simple", "bpm": BPM, "audio": "res://audio/click_120.wav",
-               "offset": 0.0, "notes": notes}, f, indent=1)
+               "offset": 0.0, "default_gesture": "OPEN_PALM", "notes": notes}, f, indent=1)
 last = max(e["beat"] + e.get("length", 0) for e in notes)
 print(f"{OUT}: {len(notes)} notes, ends at beat {last} ({last * 60 / BPM:.0f}s)")

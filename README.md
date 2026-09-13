@@ -162,7 +162,7 @@ The former body model, crop, `--body-model`, `--no-player-lock`, and `--body`
 download flag have been removed. No pose model is downloaded or loaded.
 UDP fields, ports, and normalized full-frame coordinates are unchanged.
 
-### Optional gesture mode
+### Gesture mode
 
 Open palm is the normal input pose. The three action poses are **FIST**,
 **THUMBS_UP**, and **PINCH** (index finger and thumb tips together away from the palm, with the
@@ -479,7 +479,7 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 ## Running
 
 ```bash
-.venv/bin/python vision/vertical_demo.py --preview   # terminal 1: tracker + self-view
+.venv/bin/python vision/vertical_demo.py --preview --gestures   # terminal 1: tracker + self-view
 cd game && godot --path .                             # terminal 2: the game
 ```
 

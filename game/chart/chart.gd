@@ -10,6 +10,10 @@ var bpm: float = 120.0
 var audio_path: String = ""
 ## Shifts the whole chart. Use for songs whose first beat is not at t=0.
 var offset: float = 0.0
+## Gesture inherited by notes that omit their own gesture field. Empty keeps
+## legacy charts unrestricted; themed charts can make their default artwork a
+## real gameplay requirement.
+var default_gesture: StringName = &""
 ## Sorted ascending by time. The spawner walks this with an index rather than
 ## searching, so the ordering is load-bearing.
 var notes: Array[Note] = []
@@ -44,6 +48,7 @@ static func from_dict(data: Dictionary) -> Chart:
 	c.bpm = float(data.get("bpm", 120.0))
 	c.audio_path = str(data.get("audio", ""))
 	c.offset = float(data.get("offset", 0.0))
+	c.default_gesture = Note.gesture_from_string(str(data.get("default_gesture", "")))
 
 	var spb: float = 60.0 / c.bpm
 	for raw in data.get("notes", []):
@@ -55,7 +60,7 @@ static func from_dict(data: Dictionary) -> Chart:
 		n.slot = clampi(int(raw.get("slot", 0)), 0, 1)
 		n.kind = Note.kind_from_string(str(raw.get("type", "tap")))
 		n.length = float(raw.get("length", 0.0)) * spb
-		n.gesture = Note.gesture_from_string(str(raw.get("gesture", "")))
+		n.gesture = Note.gesture_from_string(str(raw.get("gesture", c.default_gesture)))
 		c.notes.append(n)
 	c.sort_notes()
 	return c
@@ -126,7 +131,9 @@ func to_dict() -> Dictionary:
 		}
 		if n.kind == Note.Kind.HOLD:
 			entry["length"] = snappedf(n.length / spb, 0.0001)
-		if n.needs_gesture():
+		# Write only overrides. An explicit empty string is necessary when a
+		# note opts out of a non-empty chart default.
+		if n.gesture != default_gesture:
 			entry["gesture"] = String(n.gesture)
 		out.append(entry)
 	return {
@@ -134,6 +141,7 @@ func to_dict() -> Dictionary:
 		"bpm": bpm,
 		"audio": audio_path,
 		"offset": offset,
+		"default_gesture": String(default_gesture),
 		"notes": out,
 	}
 

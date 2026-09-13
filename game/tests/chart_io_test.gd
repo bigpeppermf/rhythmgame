@@ -71,6 +71,16 @@ func _test_roundtrip() -> void:
 		and not g.notes[2].needs_gesture(),
 		"gesture requirements round-trip (and absence stays absent)")
 
+	# The main chart draws open-palm art for notes without a per-note override,
+	# so its chart-level default must make that artwork enforceable.
+	var main := Chart.load_from("res://charts/simple.json")
+	var palms := 0
+	for n in main.notes:
+		if n.gesture == &"OPEN_PALM":
+			palms += 1
+	_check(main.default_gesture == &"OPEN_PALM" and palms == 72,
+		"main chart enforces its 72 displayed open-palm notes")
+
 
 ## A seek must land where asked and must not replay beats it jumped over.
 func _test_seek() -> void:

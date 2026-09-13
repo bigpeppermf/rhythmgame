@@ -96,9 +96,9 @@ func _run_parked(chart: Chart) -> void:
 		res.counts[Note.Verdict.PERFECT])
 
 
-## A note that asks for a hand shape: full marks with it, capped at GOOD
-## without it, and not enforced at all while the input has never reported a
-## gesture (mouse mock, or a tracker run without --gestures).
+## A note that asks for a hand shape only scores when that shape matches. An
+## UNKNOWN gesture is also a mismatch, so forgetting tracker gesture mode can
+## never silently award full points.
 func _run_gestures(chart: Chart) -> void:
 	for n in chart.notes:
 		n.gesture = &"FIST" if n.kind == Note.Kind.TAP else &"THUMBS_UP"
@@ -109,30 +109,27 @@ func _run_gestures(chart: Chart) -> void:
 
 	HandState.gestures_seen = false
 	var res := _simulate(chart, true, 1.0, 0.005, &"UNKNOWN")
-	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size(),
-		"no gesture ever reported: requirements ignored, all PERFECT (%d)" %
-		res.counts[Note.Verdict.PERFECT])
+	_check(res.counts[Note.Verdict.MISS] == chart.notes.size(),
+		"no gesture reported: every required shape misses (%d)" %
+		res.counts[Note.Verdict.MISS])
 
 	HandState.gestures_seen = true
 	res = _simulate(chart, true, 1.0, 0.005, &"OPEN_PALM")
-	_check(res.counts[Note.Verdict.PERFECT] == 0 and res.counts[Note.Verdict.GOOD] == chart.notes.size(),
-		"wrong shape on every note: all capped at GOOD (P %d, G %d)" %
-		[res.counts[Note.Verdict.PERFECT], res.counts[Note.Verdict.GOOD]])
-	_check(res.counts[Note.Verdict.MISS] == 0, "wrong shape is never a MISS")
+	_check(res.counts[Note.Verdict.MISS] == chart.notes.size(),
+		"wrong shape on every note: all MISS (%d)" % res.counts[Note.Verdict.MISS])
 
 	res = _simulate(chart, true, 1.0, 0.005, &"FIST")
 	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size() - holds
-		and res.counts[Note.Verdict.GOOD] == holds,
-		"fist satisfies the taps, caps the thumbs-up holds (P %d, G %d)" %
-		[res.counts[Note.Verdict.PERFECT], res.counts[Note.Verdict.GOOD]])
+		and res.counts[Note.Verdict.MISS] == holds,
+		"fist satisfies the taps and misses the thumbs-up holds (P %d, M %d)" %
+		[res.counts[Note.Verdict.PERFECT], res.counts[Note.Verdict.MISS]])
 
-	# Satisfied on ANY inside frame: a hand that shows the shape one frame in
-	# eight and UNKNOWN otherwise still gets full marks. The hand arrives 300ms
-	# early here - as a real hand does - so there are frames for the flicker
-	# to land in; with a 5ms lead a tap is inside for one frame only.
+	# A correct label on an earlier frame must not validate UNKNOWN at the
+	# closest approach. This protects against isolated classifier flicker.
 	res = _simulate(chart, true, 1.0, 0.30, &"FIST", true)
-	_check(res.counts[Note.Verdict.PERFECT] == chart.notes.size() - holds,
-		"a single frame of the right shape is enough (P %d)" % res.counts[Note.Verdict.PERFECT])
+	_check(res.counts[Note.Verdict.PERFECT] == 0,
+		"isolated correct frames cannot validate every tap (P %d)" %
+		res.counts[Note.Verdict.PERFECT])
 
 	HandState.gestures_seen = false
 	for n in chart.notes:

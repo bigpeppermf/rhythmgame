@@ -20,7 +20,8 @@ func _init() -> void:
 
 
 func configure(gesture: StringName) -> void:
-	# Unrestricted notes share the open-palm visual, not its judging requirement.
+	# Charts may use OPEN_PALM as their default requirement; truly unrestricted
+	# legacy notes retain this visual fallback.
 	texture = TEXTURES.get(gesture, TEXTURES[&"OPEN_PALM"])
 	pixel_size = HEIGHT / texture.get_height()
 	modulate = Color.WHITE
