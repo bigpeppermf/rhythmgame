@@ -2,6 +2,14 @@
 
 Everything about how the game looks. Gameplay never reads any of it.
 
+The default tap notes and hold heads use the four gesture PNGs currently in
+`assets/menu/`. `default/gesture_art.gd` maps each chart gesture to its image;
+unrestricted notes use the open-palm image without adding a gesture requirement.
+Artwork faces the camera, preserves its original colors, and fades with distance.
+Hold trails retain the hand's lane color and duration. Adjust `HEIGHT` in that
+script to resize all four icons together. Their imports enable mipmaps for
+smoother rendering as notes approach from depth.
+
 ## Replacing the look
 
 1. Duplicate `default_skin.tres`
