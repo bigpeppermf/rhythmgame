@@ -99,6 +99,7 @@ func seek(to_seconds: float) -> void:
 
 func stop() -> void:
 	_player.stop()
+	_player.stream = null
 	playing = false
 	set_process(false)
 

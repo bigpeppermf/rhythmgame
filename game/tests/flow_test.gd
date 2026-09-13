@@ -37,7 +37,7 @@ func _test_scenes_instantiate() -> void:
 ## as a crash mid-demo.
 func _test_signals_exist() -> void:
 	var expect := {
-		"res://scenes/menu.tscn": ["play_pressed", "calibrate_pressed", "edit_pressed"],
+		"res://scenes/menu.tscn": ["play_pressed", "play_solo_pressed", "calibrate_pressed", "edit_pressed"],
 		"res://scenes/editor.tscn": ["finished", "playtest_requested"],
 		"res://scenes/play_3d.tscn": ["song_finished", "quit_to_menu"],
 		"res://scenes/calibrate.tscn": ["finished"],
@@ -75,9 +75,26 @@ func _test_flow_transitions() -> void:
 	await get_tree().process_frame
 	_check(main._current.has_signal("finished"), "menu -> calibrate")
 
+	main._show_play_solo()
+	await get_tree().process_frame
+	_check(main._current.solo_mode and Field3D.slot_count() == 1,
+		"solo config takes effect before the playfield is built")
+	_check(main._current.field._cursors.size() == 1,
+		"solo builds exactly one cursor")
+	_check(main._current.chart_path == main.SOLO_CHART,
+		"solo loads its own chart before _ready")
+	_check(absf(Field3D.far_edge(0).x - Field3D.hit_edge(0).x) > 1.0,
+		"solo panel retains its visible angle")
+	main._show_play()
+	await get_tree().process_frame
+	_check(not Field3D.solo and main._current.field._cursors.size() == 2,
+		"returning to normal play restores both panels")
+	main._show_play_solo()
+	await get_tree().process_frame
 	main._show_editor()
 	await get_tree().process_frame
 	_check(main._current.has_signal("playtest_requested"), "menu -> editor")
+	_check(not Field3D.solo, "editor resets geometry after solo play")
 	var edited: Chart = main._current.chart
 	main._playtest(edited)
 	await get_tree().process_frame
@@ -86,6 +103,8 @@ func _test_flow_transitions() -> void:
 	await get_tree().process_frame
 	_check(main._current.has_signal("playtest_requested") and main._current.chart == edited,
 		"playtest returns to the editor with the same chart")
+
+	_check(main._current._stream != null, "returned editor reloads audio for its in-memory chart")
 
 	main.queue_free()
 	remove_child(main)
@@ -159,5 +178,8 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _finish() -> void:
+	Conductor.stop()
+	# Allow the audio server to release its last playback before shutdown.
+	await get_tree().create_timer(0.1).timeout
 	print("\n%s (%d failures)" % ["ALL PASS" if failures == 0 else "FAILURES", failures])
 	get_tree().quit(1 if failures > 0 else 0)

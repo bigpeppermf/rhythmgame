@@ -69,7 +69,7 @@ func _sync_notes(chart: Chart, now: float) -> void:
 			var dt: float = n.time - now
 			if dt > Field3D.LOOKAHEAD:
 				break          # sorted, so nothing later is visible either
-			if dt < -Judge.WINDOW:
+			if n.end_time() < now - Judge.WINDOW:
 				continue
 			wanted[n] = true
 

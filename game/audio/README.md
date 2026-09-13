@@ -21,3 +21,7 @@ python3 tools/make_click_track.py
 During gameplay, successive misses gradually lower music volume (down to
 -24 dB). A hit restores the target volume; a restart resets it. The timing
 clock continues running throughout the fade.
+
+For the sheet-music prototype, run `python3 tools/make_prototype_chart.py`
+from the repository root. This creates `entertainer_guide.wav` for both
+The Entertainer menu options. See [the prototype notes](../../docs/PROTOTYPE_CHART.md).

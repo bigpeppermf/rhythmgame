@@ -41,6 +41,9 @@ func _run_checks() -> void:
 	_check(h0.state == HandObservation.State.TRACKED, "slot 0 parsed as TRACKED")
 	_check(h1.state == HandObservation.State.TRACKED, "slot 1 parsed as TRACKED")
 
+	_check(h0.t_capture > 0.0 and h0.t_capture == h1.t_capture,
+		"packet capture timestamp reaches both hand samples")
+
 	# mock_sender.py --pattern static holds (0.3, 0.5) and (0.7, 0.5).
 	_check(h0.pos.distance_to(Vector2(0.3, 0.5)) < 0.01,
 		"slot 0 position matches the static pattern, got %s" % h0.pos)

@@ -24,6 +24,7 @@ var _font: Font
 
 
 func _ready() -> void:
+	Field3D.solo = false
 	_font = ThemeDB.fallback_font
 	judge = Judge.new()
 	add_child(judge)

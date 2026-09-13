@@ -5,12 +5,14 @@ extends Control
 
 signal play_pressed
 signal play_solo_pressed
+signal prototype_pressed(solo: bool)
 signal calibrate_pressed
 signal edit_pressed
 
 var _font: Font
 var _sel := 0
-const ITEMS := ["Play", "Play (1H)", "Calibrate", "Edit chart", "Quit"]
+const ITEMS := ["Play", "Play (1H)", "The Entertainer (2H)", "The Entertainer (1H)",
+	"Calibrate", "Edit chart", "Quit"]
 
 
 func _ready() -> void:
@@ -40,9 +42,11 @@ func _activate() -> void:
 	match _sel:
 		0: play_pressed.emit()
 		1: play_solo_pressed.emit()
-		2: calibrate_pressed.emit()
-		3: edit_pressed.emit()
-		4: get_tree().quit()
+		2: prototype_pressed.emit(false)
+		3: prototype_pressed.emit(true)
+		4: calibrate_pressed.emit()
+		5: edit_pressed.emit()
+		6: get_tree().quit()
 
 
 func _draw() -> void:

@@ -46,6 +46,7 @@ func _show_menu() -> void:
 	var m := _swap(MENU)
 	m.play_pressed.connect(_show_play)
 	m.play_solo_pressed.connect(_show_play_solo)
+	m.prototype_pressed.connect(_show_prototype)
 	m.calibrate_pressed.connect(_show_calibrate)
 	m.edit_pressed.connect(_show_editor)
 	_mount(m)
@@ -65,6 +66,16 @@ func _show_play_solo() -> void:
 	p.skin_path = Settings.skin_path
 	p.solo_mode = true
 	p.chart_path = SOLO_CHART
+	p.song_finished.connect(_show_results)
+	p.quit_to_menu.connect(_after_play)
+	_mount(p)
+
+
+func _show_prototype(solo: bool) -> void:
+	var p := _swap(PLAY)
+	p.skin_path = Settings.skin_path
+	p.solo_mode = solo
+	p.chart_path = "res://charts/entertainer_solo.json" if solo else "res://charts/entertainer.json"
 	p.song_finished.connect(_show_results)
 	p.quit_to_menu.connect(_after_play)
 	_mount(p)

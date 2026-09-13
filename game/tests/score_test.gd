@@ -10,6 +10,7 @@ func _ready() -> void:
 	_test_restart()
 	await get_tree().process_frame
 	await get_tree().process_frame
+	await get_tree().create_timer(0.1).timeout
 	print("Scoring: %d failures" % failures)
 	get_tree().quit(1 if failures else 0)
 

@@ -1,5 +1,8 @@
 # Writing a chart
 
+For a ready-to-play musical example, see [The Entertainer prototype](../../docs/PROTOTYPE_CHART.md).
+The in-game piano-roll editor is documented in [CHARTING.md](../../docs/CHARTING.md).
+
 A chart is a JSON file: song metadata plus a list of notes. `Chart.load_from()`
 (`../chart/chart.gd`) reads it; `Note` (`../chart/note.gd`) is what each note
 becomes at runtime.
@@ -55,8 +58,8 @@ minutes, because there's no way to correct it mid-song (see below).
 
 There's one `bpm` for the entire chart - no way to speed up or slow down
 partway through. If your song does that, you have two options: pick the
-song's dominant tempo and accept some drift during the different section, or
-convert that section's beats to the chart's tempo by hand (figure out the
+song with a steady tempo, or convert each section's beats to the chart's
+reference tempo (figure out the
 section's real start time in seconds, then `beat = seconds / (60 / bpm)`).
 Most songs don't change tempo; this only matters if yours does.
 
@@ -70,7 +73,7 @@ whichever of these applies and leave it there for every note:
 - **Two-hand mode**: `x: 0.29` for `slot: 0` (left), `x: 0.71` for `slot: 1`
   (right) - these must match `Field3D.TRACK_X` (`../gameplay/field_3d.gd`).
 
-`Chart.lint()` (see below) flags a note whose `x` doesn't match its slot's
+`Chart.lint()` (see below) flags a note whose `x` falls outside its slot's
 lane, so getting this wrong is caught immediately rather than silently
 missing.
 
@@ -85,8 +88,8 @@ density: two notes 400ms apart on top of each other are trivial, two notes
 `Chart.lint(max_speed, Field3D.track)` checks every consecutive pair on the
 same hand and flags any jump that would need more than `max_speed` (normalized
 units/second, default 2.0 in `play_3d.gd`) to make. `play_3d.gd` runs this
-automatically and prints `lint: ...` lines to the HUD before you press SPACE -
-watch for those while iterating on a chart. A HOLD occupies the hand until it
+automatically and sends warnings to the Godot output. The editor also shows
+reachability warnings while you work. A HOLD occupies the hand until it
 ends, so travel time to the next note is measured from the hold's release,
 not its start.
 
@@ -102,9 +105,9 @@ not its start.
    `play_3d.gd`'s HUD shows `lint:` warnings and lets you SPACE-restart
    instantly, so this is meant to be an iterate-and-replay loop, not a
    write-then-check-once pass.
-5. For solo mode, pick which menu option loads your chart in
-   `game/scenes/main.gd`'s `SOLO_CHART` (or `PLAY`'s default `chart_path` for
-   two-hand mode) if you're not just editing `solo.json`/`test.json` in place.
+5. `Settings.chart_path` selects the normal Play/editor chart. `SOLO_CHART`
+   in `game/scenes/main.gd` selects Play (1H). The Entertainer menu entries
+   select their own prototype files.
 
 ## Generating a chart instead of hand-writing JSON
 

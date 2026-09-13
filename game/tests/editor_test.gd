@@ -165,5 +165,8 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _finish() -> void:
+	Conductor.stop()
+	# Allow the audio server to release its last playback before shutdown.
+	await get_tree().create_timer(0.1).timeout
 	print("\n%s (%d failures)" % ["ALL PASS" if failures == 0 else "FAILURES", failures])
 	get_tree().quit(1 if failures > 0 else 0)

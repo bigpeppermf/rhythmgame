@@ -36,6 +36,7 @@ var _outro := -1.0
 var _preview: CameraPreview
 var _preview_rect: TextureRect
 var _preview_frame: Panel
+var _preview_enabled := true
 ## True when the chart's audio file isn't there yet. Not an error: expected
 ## while authoring a chart, before the real track has been dropped into
 ## game/audio/.
@@ -140,7 +141,7 @@ func _build_preview(skin: GameSkin) -> void:
 func _layout_preview() -> void:
 	if _preview_rect == null:
 		return
-	var vis: bool = _preview.texture != null
+	var vis: bool = _preview_enabled and _preview.texture != null
 	_preview_rect.visible = vis
 	_preview_frame.visible = vis
 	if not vis:
@@ -164,9 +165,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_SPACE: _start()
 		KEY_C:
-			if _preview_rect != null:
-				_preview_rect.visible = not _preview_rect.visible
-				_preview_frame.visible = _preview_rect.visible
+			_preview_enabled = not _preview_enabled
+			_layout_preview()
 		KEY_ESCAPE: quit_to_menu.emit()
 		KEY_U:
 			if HandState.source is UdpHandSource:

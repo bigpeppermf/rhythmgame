@@ -59,10 +59,14 @@ var _stream: AudioStream
 
 
 func _ready() -> void:
+	Field3D.solo = false
 	_font = ThemeDB.fallback_font
 	set_process(true)
 	if chart == null:
 		load_chart(chart_path)
+	else:
+		_load_audio()
+		_relint()
 
 
 func load_chart(path: String) -> void:
@@ -71,11 +75,15 @@ func load_chart(path: String) -> void:
 	if chart == null:
 		chart = Chart.new()
 		chart.title = path.get_file()
-	_stream = load(chart.audio_path) if not chart.audio_path.is_empty() else null
+	_load_audio()
 	_undo.clear()
 	selected = null
 	dirty = false
 	_relint()
+
+
+func _load_audio() -> void:
+	_stream = load(chart.audio_path) if ResourceLoader.exists(chart.audio_path) else null
 
 
 # ── model ────────────────────────────────────────────────────────────────────

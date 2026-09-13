@@ -149,7 +149,10 @@ func save_to(path: String) -> Error:
 
 
 func duration() -> float:
-	return notes[-1].end_time() if not notes.is_empty() else 0.0
+	var end := 0.0
+	for n in notes:
+		end = maxf(end, n.end_time())
+	return end
 
 
 func rewind() -> void:

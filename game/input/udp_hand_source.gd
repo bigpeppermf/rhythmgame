@@ -77,10 +77,10 @@ func poll(hands: Array) -> void:
 
 	connected = true
 	_last_rx = now
-	_apply(newest.get("hands", []), hands)
+	_apply(newest.get("hands", []), hands, float(newest.get("t_capture", 0.0)))
 
 
-func _apply(incoming: Array, hands: Array) -> void:
+func _apply(incoming: Array, hands: Array, t_capture: float = 0.0) -> void:
 	for entry in incoming:
 		if not (entry is Dictionary):
 			continue
@@ -92,7 +92,7 @@ func _apply(incoming: Array, hands: Array) -> void:
 		h.vel = Vector2(float(entry.get("vx", 0.0)), float(entry.get("vy", 0.0)))
 		h.conf = float(entry.get("conf", 0.0))
 		h.state = HandObservation.state_from_string(str(entry.get("state", "LOST")))
-		h.t_capture = float(entry.get("t_capture", 0.0))
+		h.t_capture = t_capture
 		# Present only when the tracker runs with --gestures. Absent means
 		# unknown, which is exactly what a sender without the feature means.
 		h.gesture = StringName(str(entry.get("gesture", "UNKNOWN")))

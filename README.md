@@ -4,8 +4,8 @@ A rhythm game where **the webcam is the controller**. Two hands are tracked by
 computer vision; you move them to intercept notes flying toward you down a 3D
 perspective highway.
 
-The camera feed is never shown. It is purely an input device — the game screen
-is a completely separate rendered interface.
+The game uses a rendered interface. An optional camera self-view can appear
+in the corner; press C during play to hide or show it.
 
 ```
 ┌──────────────┐   UDP    ┌──────────────────┐
@@ -29,13 +29,28 @@ This is what lets three people work in parallel from day one: the gameplay
 programmer builds the entire game against a mouse-driven mock producer, and the
 real tracker drops in later without changing a line of game code.
 
+## Play the musical prototype
+
+```bash
+python3 tools/make_click_track.py       # calibration and test audio
+python3 tools/make_prototype_chart.py   # The Entertainer chart + matching guide audio
+godot --editor --path game             # let the audio import, then run the project
+```
+
+Choose **The Entertainer (2H)** or **The Entertainer (1H)** in the menu. The
+52-second guide follows a public-domain score at 80 BPM: syncopated melody,
+held notes, and reachable hand movements. Mouse input works immediately;
+use the setup below for a webcam. Audio is generated locally and stays out of Git.
+See [the chart design and recording-alignment notes](docs/PROTOTYPE_CHART.md).
+
 ## Status
 
-Step 1 implemented: two bare hands tracked with MediaPipe. Your anatomical
-left palm controls the left cursor; your right palm controls the right cursor.
-Each hand now has persistent TRACKED/COASTING/LOST state and velocity.
-The demo now sends both slots as JSON over UDP to 127.0.0.1:5005 by default.
-A Python diagnostic receiver is included; Godot integration is owned by gameplay.
+Integrated: MediaPipe hand and gesture tracking, UDP camera auto-detection,
+optional self-view, two-hand and solo play, chart editor and recording mode,
+scoring multipliers, music fading on misses, calibration, and results.
+The maintained protocol uses port 5005 for hands and 5006 for preview.
+Camera-free tests cover the logic and real UDP bridge; hardware tracking and
+latency still need a run with your camera and lighting.
 
 ## Setup (once per machine)
 
@@ -461,13 +476,6 @@ protocol, the latency analysis, the vision rules, and the Godot architecture.
 | **Gameplay** | Conductor, chart loading, spawning, Judge, scoring | `MockHandSource` (mouse) |
 | **Feel & content** | 3D visuals, audio, feedback, chart tooling, calibration screen | the note scene contract |
 
-## Open questions
-
-- 1 axis of hand control, or 2? (decides whether the Judge is a 1D or 2D overlap test)
-- Note vocabulary — taps only, or holds and traces?
-- Chart format specifics
-- Scoring — binary hit/miss, or graded by how much of the window was satisfied?
-
 ## Running
 
 ```bash
@@ -491,10 +499,14 @@ webcam squatting on index 0 (Iriun, OBS, DroidCam) no longer breaks it; pass
 | `scenes/clock_test.tscn` | Conductor jitter/drift graph |
 
 ```bash
-godot --headless res://tests/judge_test.tscn   # 21 tests — chart, judging, scoring, gestures
-godot --headless res://tests/flow_test.tscn    # 32 tests — scenes, settings, stats
-godot --headless res://tests/chart_io_test.tscn # 15 tests — round-trip, seek
-godot --headless res://tests/editor_test.tscn  # 41 tests — editor model, no mouse
+godot --headless res://tests/judge_test.tscn   # chart, judging, gestures
+godot --headless res://tests/flow_test.tscn    # scenes, solo/editor transitions, settings
+godot --headless res://tests/chart_io_test.tscn # round-trip, seek
+godot --headless res://tests/editor_test.tscn  # editor model, no mouse
+godot --headless res://tests/score_test.tscn   # scoring thresholds and restart
+godot --headless res://tests/music_fader_test.tscn
+godot --headless res://tests/udp_source_test.tscn
+godot --headless res://tests/prototype_test.tscn # score timing, reach, playback, holds
 godot --headless res://tests/bridge_test.tscn  # game <- real vision encoder (start tools/vision_bridge_check.py first)
 godot res://tests/shot.tscn                    # render screenshots
 python3 ../tools/mock_sender.py --lose 3       # fake camera over real UDP

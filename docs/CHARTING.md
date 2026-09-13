@@ -106,7 +106,7 @@ that takes beats and heights rather than pixels, which is what lets
 `tests/editor_test.tscn` drive the whole model headless — 34 checks, no mouse.
 
 Open it from the menu (**Edit chart**) or run `res://scenes/editor.tscn`
-directly. It edits `res://charts/test.json`; change `chart_path` for another.
+directly. It edits `Settings.chart_path`; change that setting for another chart.
 
 **Stop after 5 if time runs out.** A timeline with lint that you click notes
 onto is already far better than editing JSON; 6 and 7 are conveniences rather

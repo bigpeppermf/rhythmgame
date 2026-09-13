@@ -108,5 +108,7 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _finish() -> void:
+	# Let the audio server release stopped playback before the tree exits.
+	await get_tree().create_timer(0.1).timeout
 	print("\n%s (%d failures)" % ["ALL PASS" if failures == 0 else "FAILURES", failures])
 	get_tree().quit(1 if failures > 0 else 0)
