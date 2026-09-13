@@ -6,7 +6,7 @@ extends CursorView
 
 var _art: Sprite3D
 var _color: Color
-const HEIGHT := 0.95
+const HEIGHT := 1.25
 const TEXTURES := [
 	preload("res://assets/menu/left_jelly.png"),
 	preload("res://assets/menu/right_jelly.png"),

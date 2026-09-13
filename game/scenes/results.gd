@@ -10,20 +10,48 @@ signal finished
 
 const BUCKETS := 21          # odd, so there is a true centre bucket
 const RANGE := 0.25          # +-250ms across the histogram
+const DESIGN_SIZE := Vector2(1100, 720)
+const BACKGROUND := preload("res://assets/menu/game_bg.png")
+const BUBBLE := preload("res://assets/menu/bubble.png")
+const FONT := preload("res://assets/fonts/cherry_bomb_one/CherryBombOne-Regular.ttf")
 
 var score: ScoreState
 var chart: Chart
 var _font: Font
+var _continue: Button
 
 
 func _ready() -> void:
-	_font = ThemeDB.fallback_font
-	set_process(true)
+	_font = FONT
+	_continue = Button.new()
+	_continue.text = "Continue"
+	_continue.add_theme_font_override("font", FONT)
+	_continue.add_theme_font_size_override("font_size", 24)
+	_continue.add_theme_color_override("font_color", Color("244c70"))
+	_continue.add_theme_color_override("font_hover_color", Color("244c70"))
+	_continue.add_theme_color_override("font_focus_color", Color("244c70"))
+	_continue.add_theme_color_override("font_pressed_color", Color("244c70"))
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("b8f1ec") if state == "normal" else Color("fff0bc")
+		style.set_corner_radius_all(18)
+		if state == "focus":
+			style.bg_color = Color.TRANSPARENT
+			style.border_color = Color("fff0bc")
+			style.set_border_width_all(3)
+		_continue.add_theme_stylebox_override(state, style)
+	_continue.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_continue.pressed.connect(func(): finished.emit())
+	add_child(_continue)
+	resized.connect(_layout)
+	_layout()
+	_continue.grab_focus()
 
 
 func setup(s: ScoreState, c: Chart) -> void:
 	score = s
 	chart = c
+	queue_redraw()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -32,7 +60,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			finished.emit()
 
 
-func _process(_delta: float) -> void:
+func _layout() -> void:
+	var factor := minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y)
+	_continue.scale = Vector2.ONE * factor
+	_continue.size = Vector2(280, 48)
+	_continue.position = (size - DESIGN_SIZE * factor) * 0.5 + Vector2(410, 614) * factor
 	queue_redraw()
 
 
@@ -64,38 +96,38 @@ func _histogram() -> PackedInt32Array:
 	return h
 
 
-## Everything sits in one centred column so the layout holds at any window
-## aspect rather than drifting to one side of a wide screen.
-func _column() -> Rect2:
-	var w := minf(size.x - 96.0, 620.0)
-	return Rect2(Vector2((size.x - w) * 0.5, maxf(60.0, size.y * 0.10)), Vector2(w, 0))
-
-
 func _draw() -> void:
+	if size.x <= 0 or size.y <= 0:
+		return
 	var sk := Ui.skin()
-	Ui.background(self, size)
+	# Cover the window with the same artwork as gameplay, preserving its ratio.
+	var zoom := maxf(size.x / BACKGROUND.get_width(), size.y / BACKGROUND.get_height())
+	var source_size := size / zoom
+	draw_texture_rect_region(BACKGROUND, Rect2(Vector2.ZERO, size),
+		Rect2((BACKGROUND.get_size() - source_size) * 0.5, source_size))
+	var factor := minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y)
+	draw_set_transform((size - DESIGN_SIZE * factor) * 0.5, 0, Vector2.ONE * factor)
+	for bubble in [Rect2(42, 135, 62, 62), Rect2(100, 240, 24, 24),
+			Rect2(62, 510, 86, 86), Rect2(967, 112, 48, 48),
+			Rect2(991, 374, 70, 70), Rect2(956, 580, 28, 28)]:
+		draw_texture_rect(BUBBLE, bubble, false, Color(1, 1, 1, 0.65))
+	_card(Rect2(150, 32, 800, 650), Color(0.08, 0.19, 0.38, 0.88), Color(sk.slot_color(0), 0.7))
 	if score == null:
 		return
-	var col := _column()
-	var x := col.position.x
-	var y := col.position.y
-
-	_text("RESULTS", Vector2(x, y), 17, sk.ui_faint)
-	y += 58.0
-	_text("Score %d" % score.score, Vector2(x, y), 46, sk.ui_text)
-	y += 34.0
-	_text("Combo %d    Multiplier x%d    Best Combo %d" %
+	_center("Results", 84, 40, Color("fff0bc"))
+	_center("Score: %d" % score.score, 184, 52, sk.ui_accent)
+	_center("Combo: %d    Multiplier: x%d    Best combo: %d" %
 		[score.combo, score.multiplier, score.best_combo],
-		Vector2(x, y), 17, sk.ui_dim)
-
-	y += 52.0
-	for v in [Note.Verdict.PERFECT, Note.Verdict.GREAT, Note.Verdict.GOOD, Note.Verdict.MISS]:
-		_text("%-8s %3d" % [Note.verdict_name(v), score.counts[v]], Vector2(x, y), 16,
-			_verdict_color(v))
-		y += 24.0
-
-	_draw_histogram(y + 46.0, col)
-	_text("ENTER to continue", Vector2(x, size.y - 52.0), 15, sk.ui_faint)
+		222, 20, sk.ui_text)
+	var verdicts := [Note.Verdict.PERFECT, Note.Verdict.GREAT, Note.Verdict.GOOD, Note.Verdict.MISS]
+	_card(Rect2(190, 250, 720, 90), Color(0.25, 0.47, 0.63, 0.48), Color("b8f1ec"))
+	for i in verdicts.size():
+		var v: Note.Verdict = verdicts[i]
+		var x := 190.0 + i * 180.0
+		_text(Note.verdict_name(v).capitalize() + ":", Vector2(x + 16, 282), 22, sk.ui_text)
+		_text(str(score.counts[v]), Vector2(x + 16, 322), 30, sk.ui_text)
+	_draw_histogram(398, Rect2(190, 0, 720, 0))
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_histogram(top: float, col: Rect2) -> void:
@@ -108,9 +140,9 @@ func _draw_histogram(top: float, col: Rect2) -> void:
 	var w := col.size.x
 	var x0 := col.position.x
 	var bw := w / BUCKETS
-	var height := 110.0
+	var height := 100.0
 
-	_text("timing", Vector2(x0, top - 12), 14, sk.ui_faint)
+	_text("Timing", Vector2(x0, top - 20), 24, sk.ui_text)
 
 	for i in BUCKETS:
 		var frac := float(h[i]) / peak
@@ -122,21 +154,37 @@ func _draw_histogram(top: float, col: Rect2) -> void:
 		draw_rect(Rect2(x + 1, top + height - bar, bw - 2, bar), Color(c, 0.9))
 
 	var mid := x0 + w * 0.5
-	draw_line(Vector2(mid, top - 6), Vector2(mid, top + height + 6), sk.ui_faint, 1.0)
+	draw_line(Vector2(mid, top - 6), Vector2(mid, top + height + 6), Color("b8f1ec"), 1.0)
 	draw_line(Vector2(x0, top + height), Vector2(x0 + w, top + height),
-		Color(sk.ui_faint, 0.4), 1.0)
-	_text("early", Vector2(x0, top + height + 20), 13, sk.ui_faint)
-	_text("late", Vector2(x0 + w - 26, top + height + 20), 13, sk.ui_faint)
+		Color(sk.ui_text, 0.4), 1.0)
+	_text("Early", Vector2(x0, top + height + 22), 17, Color("b8f1ec"))
+	_text("Late", Vector2(x0 + w - 42, top + height + 22), 17, Color("b8f1ec"))
 
 	var mean := _mean_error()
-	_text("mean %+.0f ms" % (mean * 1000.0), Vector2(x0, top + height + 48), 15, sk.ui_dim)
+	var hits := score.judged - int(score.counts[Note.Verdict.MISS])
+	_center("Average timing: %+.0f ms" % (mean * 1000.0) if hits > 0 else "No hits to measure yet",
+		top + height + 52, 20, sk.ui_text)
 
 	# Close the loop back to calibration: a cluster that is consistently off
 	# centre is an offset that was measured wrong, not a player who is bad.
 	if absf(mean) > 0.045:
-		_text("consistently %s - recalibrating would recover this" %
+		_center("Consistently %s — try recalibrating your timing" %
 			("late" if mean > 0 else "early"),
-			Vector2(x0, top + height + 72), 14, sk.ui_warn)
+			top + height + 84, 17, sk.ui_warn)
+
+
+func _card(rect: Rect2, fill: Color, border: Color) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(22)
+	draw_style_box(style, rect)
+
+
+func _center(s: String, baseline: float, px: int, color: Color) -> void:
+	var width := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+	_text(s, Vector2((DESIGN_SIZE.x - width) * 0.5, baseline), px, color)
 
 
 func _text(s: String, at: Vector2, px: int, col: Color) -> void:
