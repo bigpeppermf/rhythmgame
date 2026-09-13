@@ -16,7 +16,7 @@ var chart_path: String = Settings.chart_path
 ## Grace after the last note resolves, so its hit flash is seen before the
 ## results screen replaces it.
 const OUTRO := 1.2
-const SCORE_FONT := preload("res://assets/fonts/poppins/Poppins-Medium.ttf")
+const SCORE_FONT := preload("res://assets/fonts/cherry_bomb_one/CherryBombOne-Regular.ttf")
 const PLAY_FOV := 44.0
 ## Swap this (or set it before _ready) to restyle the entire game.
 @export var skin_path := "res://visual/default_skin.tres"
@@ -95,7 +95,23 @@ func _build_camera(skin: GameSkin) -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background_layer.add_child(background)
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
+	var bubble_layer := Control.new()
+	bubble_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bubble_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background_layer.add_child(bubble_layer)
+	# Normalized positions keep the bubbles distributed as the window grows.
+	_add_bubble(bubble_layer, 0.08, 0.16, 58.0, 0.62)
+	_add_bubble(bubble_layer, 0.14, 0.31, 30.0, 0.48)
+	_add_bubble(bubble_layer, 0.22, 0.72, 76.0, 0.56)
+	_add_bubble(bubble_layer, 0.34, 0.22, 42.0, 0.45)
+	_add_bubble(bubble_layer, 0.46, 0.84, 24.0, 0.42)
+	_add_bubble(bubble_layer, 0.57, 0.18, 46.0, 0.46)
+	_add_bubble(bubble_layer, 0.63, 0.78, 60.0, 0.52)
+	_add_bubble(bubble_layer, 0.72, 0.28, 82.0, 0.58)
+	_add_bubble(bubble_layer, 0.80, 0.56, 28.0, 0.46)
+	_add_bubble(bubble_layer, 0.88, 0.12, 52.0, 0.62)
+	_add_bubble(bubble_layer, 0.94, 0.38, 38.0, 0.50)
+	_add_bubble(bubble_layer, 0.90, 0.82, 68.0, 0.54)
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CANVAS
 	env.background_canvas_max_layer = -10
@@ -106,6 +122,24 @@ func _build_camera(skin: GameSkin) -> void:
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)
+
+
+func _add_bubble(layer: Control, x: float, y: float, diameter: float, opacity: float) -> void:
+	var bubble := TextureRect.new()
+	bubble.texture = preload("res://assets/menu/bubble.png")
+	bubble.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bubble.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bubble.modulate = Color(1, 1, 1, opacity)
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.anchor_left = x
+	bubble.anchor_right = x
+	bubble.anchor_top = y
+	bubble.anchor_bottom = y
+	bubble.offset_left = -diameter * 0.5
+	bubble.offset_top = -diameter * 0.5
+	bubble.offset_right = diameter * 0.5
+	bubble.offset_bottom = diameter * 0.5
+	layer.add_child(bubble)
 
 
 func _build_hud() -> void:
@@ -129,7 +163,13 @@ func _build_hud() -> void:
 	_hud = Label.new()
 	_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud.add_theme_font_size_override("font_size", 15)
+	_hud.add_theme_font_override("font", SCORE_FONT)
+	_hud.add_theme_font_size_override("font_size", 24)
+	_hud.add_theme_color_override("font_color", Color(0.98, 1.0, 0.96, 0.96))
+	_hud.add_theme_color_override("font_shadow_color", Color(0.12, 0.20, 0.34, 0.78))
+	_hud.add_theme_constant_override("shadow_offset_x", 2)
+	_hud.add_theme_constant_override("shadow_offset_y", 2)
+	_hud.add_theme_constant_override("line_spacing", 4)
 	layer.add_child(_hud)
 	_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_hud.offset_top = 12
@@ -144,6 +184,8 @@ func _layout_gameplay() -> void:
 	_cam.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(PLAY_FOV * 0.5)) * aspect_scale))
 	var ui_scale := clampf(minf(screen.x / 1280.0, screen.y / 720.0), 0.6, 1.5)
 	_score_hud.add_theme_font_size_override("font_size", roundi(36.0 * ui_scale))
+	_hud.add_theme_font_size_override("font_size", roundi(24.0 * ui_scale))
+	_hud.offset_top = roundi(12.0 * ui_scale)
 
 
 ## The self-view sits in the lower-right corner, clear of both panels.
@@ -279,7 +321,7 @@ func _update_hud() -> void:
 			lines.append("lint: " + w)
 	else:
 		lines.append("Combo %d    Best Combo %d" % [score.combo, score.best_combo])
-		lines.append("PERFECT %d  GREAT %d  GOOD %d  MISS %d" % [
+		lines.append("Perfect: %d    Great: %d    Good: %d    Miss: %d" % [
 			score.counts[Note.Verdict.PERFECT], score.counts[Note.Verdict.GREAT],
 			score.counts[Note.Verdict.GOOD], score.counts[Note.Verdict.MISS]])
 		if _show_debug:

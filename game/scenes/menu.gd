@@ -56,7 +56,9 @@ func _layout() -> void:
 	var factor := minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y)
 	composition.scale = Vector2.ONE * factor
 	composition.position = (size - DESIGN_SIZE * factor) * 0.5
-	var panel_factor := minf(1.0, minf(size.x / 520.0, size.y / 620.0))
+	# Use the 1280x720 composition as the reference, then grow the popup in
+	# fullscreen while keeping it usable on smaller windows.
+	var panel_factor := clampf(minf(size.x / 1280.0, size.y / 720.0), 0.88, 1.35)
 	options_panel.scale = Vector2.ONE * panel_factor
 	options_panel.position = (size - options_panel.size * panel_factor) * 0.5
 	for button in _menu_buttons:
