@@ -32,8 +32,8 @@ var _hud: Label
 var _cam: Camera3D
 var _outro := -1.0
 ## True when the chart's audio file isn't there yet. Not an error: expected
-## while prototyping a chart (hand-authored or GH-converted) before the real
-## track has been dropped into game/audio/.
+## while authoring a chart, before the real track has been dropped into
+## game/audio/.
 var _missing_audio := false
 
 
@@ -65,10 +65,14 @@ func _build_camera(skin: GameSkin) -> void:
 	_cam = Camera3D.new()
 	# Centred and nearly head-on. Height is the only charted axis, so a steep
 	# downward tilt would foreshorten exactly what the player is judged on.
-	# Far enough back that both panels fit with margins either side.
 	_cam.position = Vector3(0.0, 0.4, 12.0)
 	_cam.rotation_degrees = Vector3(-2.0, 0.0, 0.0)
-	_cam.fov = 56.0
+	# Two side-by-side panels need a wide FOV to both fit with margins either
+	# side. A single centred lane has no second panel to fill that width with
+	# - at the same FOV it reads as a thin line lost in a mostly empty frame -
+	# so solo mode zooms in instead, until the lane's own height (the only
+	# axis that actually varies) fills a comparable share of the screen.
+	_cam.fov = 34.0 if solo_mode else 56.0
 	add_child(_cam)
 
 	var env := Environment.new()
