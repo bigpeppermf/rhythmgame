@@ -2,11 +2,14 @@ extends Node
 ## Scene flow. Owns nothing but the transitions.
 ##
 ##   menu -> play -> results -> menu
+##        -> play (solo) -> results -> menu
 ##        -> calibrate -> menu
 ##        -> editor -> play (playtest) -> results -> editor
 
 const MENU := "res://scenes/menu.tscn"
 const PLAY := "res://scenes/play_3d.tscn"
+## One hand, one centred lane - see charts/README.md for how to chart it.
+const SOLO_CHART := "res://charts/solo.json"
 const CALIBRATE := "res://scenes/calibrate.tscn"
 const RESULTS := "res://scenes/results.tscn"
 const EDITOR := "res://scenes/editor.tscn"
@@ -42,6 +45,7 @@ func _show_menu() -> void:
 	_playtest_chart = null
 	var m := _swap(MENU)
 	m.play_pressed.connect(_show_play)
+	m.play_solo_pressed.connect(_show_play_solo)
 	m.calibrate_pressed.connect(_show_calibrate)
 	m.edit_pressed.connect(_show_editor)
 	_mount(m)
@@ -51,6 +55,16 @@ func _show_play(chart: Chart = null) -> void:
 	var p := _swap(PLAY)
 	p.skin_path = Settings.skin_path
 	p.chart_override = chart
+	p.song_finished.connect(_show_results)
+	p.quit_to_menu.connect(_after_play)
+	_mount(p)
+
+
+func _show_play_solo() -> void:
+	var p := _swap(PLAY)
+	p.skin_path = Settings.skin_path
+	p.solo_mode = true
+	p.chart_path = SOLO_CHART
 	p.song_finished.connect(_show_results)
 	p.quit_to_menu.connect(_after_play)
 	_mount(p)

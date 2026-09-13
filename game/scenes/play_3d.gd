@@ -17,6 +17,8 @@ var chart_path: String = Settings.chart_path
 const OUTRO := 1.2
 ## Swap this (or set it before _ready) to restyle the entire game.
 @export var skin_path := "res://visual/default_skin.tres"
+## One hand, one centred lane - see Field3D.solo. Set before _ready.
+@export var solo_mode := false
 
 var chart: Chart
 ## Set before adding to the tree to play a chart that is not on disk - the
@@ -33,9 +35,14 @@ var _outro := -1.0
 var _preview: CameraPreview
 var _preview_rect: TextureRect
 var _preview_frame: Panel
+## True when the chart's audio file isn't there yet. Not an error: expected
+## while authoring a chart, before the real track has been dropped into
+## game/audio/.
+var _missing_audio := false
 
 
 func _ready() -> void:
+	Field3D.solo = solo_mode
 	var skin: GameSkin = load(skin_path)
 	if skin == null:
 		push_warning("no skin at %s; falling back to defaults" % skin_path)
@@ -63,7 +70,8 @@ func _build_camera(skin: GameSkin) -> void:
 	_cam = Camera3D.new()
 	# Centred and nearly head-on. Height is the only charted axis, so a steep
 	# downward tilt would foreshorten exactly what the player is judged on.
-	# Far enough back that both panels fit with margins either side.
+	# Far enough back that both panels fit with margins either side. The solo
+	# panel is a normal panel slid to the centre, so the same framing serves it.
 	_cam.position = Vector3(0.0, 0.4, 12.0)
 	_cam.rotation_degrees = Vector3(-2.0, 0.0, 0.0)
 	_cam.fov = 56.0
@@ -169,10 +177,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _start() -> void:
 	if chart == null:
 		return
+	_outro = -1.0
+	_missing_audio = not ResourceLoader.exists(chart.audio_path)
+	if _missing_audio:
+		Conductor.stop()
+		field.clear()
+		return
 	score.reset()
 	field.clear()
 	judge.begin(chart)
-	_outro = -1.0
 	Conductor.play(load(chart.audio_path), chart.bpm)
 
 
@@ -214,6 +227,9 @@ func _update_hud() -> void:
 	var lines := PackedStringArray()
 	if chart == null:
 		lines.append("no chart at %s" % chart_path)
+	elif _missing_audio:
+		lines.append("%s  -  no audio yet at %s" % [chart.title, chart.audio_path])
+		lines.append("drop the track in, then SPACE to retry")
 	elif not Conductor.playing:
 		lines.append("%s  -  %d notes  -  SPACE to start" % [chart.title, chart.notes.size()])
 		for w in chart.warnings:

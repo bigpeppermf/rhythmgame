@@ -39,9 +39,25 @@ const LOOKAHEAD := 2.0
 const TRACK_W := 0.21
 ## Normalized x each panel is centred on. Index is the slot: 0 = left, 1 = right.
 const TRACK_X := [0.29, 0.71]
+## Where slot 0's panel sits when playing solo - dead centre, not off to a
+## side, since there is no second hand to balance it against.
+const SOLO_TRACK_X := 0.5
 ## World scale applied to horizontal drift off the lane, so a hand that strays
 ## visibly slides off its panel instead of silently failing to score.
 const DRIFT := 9.0
+
+## True while a one-hand playfield is active. Only slot 0 is ever used in that
+## mode; its panel is the left panel's exact shape, slid over to the centre
+## instead of sitting off to one side. Whichever scene owns the field sets
+## this at startup - Field3D has no scene lifecycle of its own to reset it,
+## so every scene must set it explicitly rather than assume the default.
+static var solo := false
+
+
+## How many hands the current mode uses - and so how many panels/cursors to
+## build. Callers that loop "for slot in 2" should loop this instead.
+static func slot_count() -> int:
+	return 1 if solo else 2
 
 
 static func side(slot: int) -> float:
@@ -52,14 +68,22 @@ static func depth() -> float:
 	return LOOKAHEAD * SCROLL
 
 
+## Horizontal offset applied to the whole panel. Solo mode keeps the panel's
+## normal splayed shape and just translates it so its x extent is centred on
+## the camera. The angle is not decoration: a panel whose near and far edges
+## share an x is edge-on to a centred camera and collapses to a line.
+static func x_shift() -> float:
+	return (OUTER_X + INNER_X) * 0.5 if solo else 0.0
+
+
 ## Centre of the hit edge: where notes arrive and the hand waits.
 static func hit_edge(slot: int) -> Vector3:
-	return Vector3(side(slot) * OUTER_X, 0.0, 0.0)
+	return Vector3(side(slot) * OUTER_X + x_shift(), 0.0, 0.0)
 
 
 ## Centre of the far edge, where notes appear.
 static func far_edge(slot: int) -> Vector3:
-	return Vector3(side(slot) * INNER_X, 0.0, -depth())
+	return Vector3(side(slot) * INNER_X + x_shift(), 0.0, -depth())
 
 
 ## Movement per second along the panel, pointing away from the player.
@@ -80,7 +104,7 @@ static func at(slot: int, dt: float, y: float, dx: float = 0.0) -> Vector3:
 
 
 static func note_position(note_time: float, now: float, slot: int, p: Vector2) -> Vector3:
-	return at(slot, note_time - now, p.y, p.x - TRACK_X[slot])
+	return at(slot, note_time - now, p.y, p.x - lane_x(slot))
 
 
 ## Where a hand's cursor sits: on the hit edge, at the hand's height. The
@@ -109,14 +133,14 @@ static func corners(slot: int) -> PackedVector3Array:
 
 ## Normalized x bounds of one hand's lane.
 static func track(slot: int) -> Vector2:
-	var c: float = TRACK_X[slot]
+	var c: float = lane_x(slot)
 	return Vector2(c - TRACK_W * 0.5, c + TRACK_W * 0.5)
 
 
 ## Normalized x every note for this hand should sit on. With one lane, the
 ## charted axis is height; x is just which panel you are on.
 static func lane_x(slot: int) -> float:
-	return TRACK_X[slot]
+	return SOLO_TRACK_X if solo else TRACK_X[slot]
 
 
 static func on_track(slot: int, x: float) -> bool:

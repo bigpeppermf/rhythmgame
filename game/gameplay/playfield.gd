@@ -123,7 +123,7 @@ func _make_note_view(kind: Note.Kind) -> NoteView:
 # ── cursors ──────────────────────────────────────────────────────────────────
 
 func _build_cursors() -> void:
-	for slot in 2:
+	for slot in Field3D.slot_count():
 		var v: CursorView
 		if skin.cursor_scene != null:
 			v = skin.cursor_scene.instantiate()
@@ -135,7 +135,7 @@ func _build_cursors() -> void:
 
 
 func _sync_cursors() -> void:
-	for slot in 2:
+	for slot in Field3D.slot_count():
 		var h: HandObservation = HandState.hands[slot]
 		_cursors[slot].position = Field3D.cursor_position(slot, HandState.cursor(slot))
 		_cursors[slot].basis = Field3D.panel_basis(slot)
@@ -181,7 +181,7 @@ func _build_lane() -> void:
 	var edges := PackedVector3Array()
 	var rungs := PackedVector3Array()
 
-	for slot in 2:
+	for slot in Field3D.slot_count():
 		var c: PackedVector3Array = Field3D.corners(slot)
 		var nt: Vector3 = c[0]      # near top
 		var nb: Vector3 = c[1]      # near bottom
