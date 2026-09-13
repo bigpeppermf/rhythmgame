@@ -26,7 +26,13 @@ var playing: bool = false
 ## screen later; this is the knob that absorbs the whole camera pipeline delay.
 var input_offset: float = 0.0
 
+## Gameplay's target volume in dB, e.g. ducked by a miss-streak fader. Never
+## touch `_player.volume_db` directly - set this and let `_process` ease
+## toward it, so every change is a fade rather than a click.
+var volume_db: float = 0.0
+
 var _player: AudioStreamPlayer
+var _current_volume_db: float = 0.0
 var _last_beat: int = -1
 var _started: bool = false
 
@@ -53,6 +59,9 @@ func play(stream: AudioStream, song_bpm: float) -> void:
 	audio_time = 0.0
 	_last_beat = -1
 	_started = false
+	volume_db = 0.0
+	_current_volume_db = 0.0
+	_player.volume_db = 0.0
 	playing = true
 	set_process(true)
 	_player.play()
@@ -88,6 +97,7 @@ func _process(delta: float) -> void:
 	audio_time = _read_audio_clock()
 	song_time = _compute_song_time(delta, audio_time)
 	_emit_beats()
+	_ease_volume(delta)
 
 
 ## The raw hardware clock.
@@ -148,3 +158,18 @@ func _emit_beats() -> void:
 	while _last_beat < current:
 		_last_beat += 1
 		beat.emit(_last_beat)
+
+
+## How fast the audible volume chases `volume_db`, as the fraction of
+## remaining difference removed per second. Same frame-rate-independent form
+## as the time resync above, for the same reason - a fixed step per frame
+## would fade at different speeds at different frame rates.
+const VOLUME_EASE_RATE := 3.0
+
+
+func _ease_volume(delta: float) -> void:
+	if is_equal_approx(_current_volume_db, volume_db):
+		return
+	_current_volume_db += (volume_db - _current_volume_db) * \
+		(1.0 - exp(-VOLUME_EASE_RATE * delta))
+	_player.volume_db = _current_volume_db

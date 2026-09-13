@@ -22,6 +22,7 @@ var chart: Chart
 var judge: Judge
 var field: Playfield
 var score := ScoreState.new()
+var fader := MusicFader.new()
 
 var _hud: Label
 var _cam: Camera3D
@@ -107,6 +108,7 @@ func _start() -> void:
 		field.clear()
 		return
 	score.reset()
+	fader.reset()
 	field.clear()
 	judge.begin(chart)
 	Conductor.play(load(chart.audio_path), chart.bpm)
@@ -141,6 +143,7 @@ func _check_finished(delta: float) -> void:
 
 func _on_judged(n: Note) -> void:
 	score.apply(n)
+	fader.on_judged(n)
 	field.flash(n)
 
 
@@ -162,6 +165,9 @@ func _update_hud() -> void:
 			score.counts[Note.Verdict.GOOD], score.counts[Note.Verdict.MISS]])
 		lines.append("t %6.2f    %d/%d" % [
 			Conductor.judge_time(), score.judged, chart.notes.size()])
+		if fader.miss_streak > 0:
+			lines.append("music %.0f dB (miss streak %d)" %
+				[Conductor.volume_db, fader.miss_streak])
 	lines.append("")
 	lines.append("input: %s   (U udp/mock, TAB switch, M mirror, L lose)" % HandState.source_name())
 	_hud.text = "\n".join(lines)
