@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scenes/menu.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/menu/ocean_motion_bg.png" id="2"]
@@ -7,11 +7,13 @@
 [ext_resource type="Texture2D" path="res://assets/menu/1_hand.png" id="5"]
 [ext_resource type="Texture2D" path="res://assets/menu/calibrate.png" id="6"]
 
+[ext_resource type="Texture2D" path="res://assets/menu/bubble.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/menu/star.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/menu/options.png" id="9"]
+
 [sub_resource type="AtlasTexture" id="PlayArt"]
 atlas = ExtResource("4")
 region = Rect2(120, 0, 450, 266)
-
-[sub_resource type="StyleBoxEmpty" id="NoBox"]
 
 [node name="menu" type="Control"]
 layout_mode = 3
@@ -35,6 +37,126 @@ layout_mode = 0
 offset_right = 1280.0
 offset_bottom = 720.0
 mouse_filter = 2
+
+[node name="BubbleLeftSmall" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.55)
+layout_mode = 0
+offset_left = 159.0
+offset_top = 273.0
+offset_right = 174.0
+offset_bottom = 288.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleLeftMedium" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.65)
+layout_mode = 0
+offset_left = 191.0
+offset_top = 276.0
+offset_right = 217.0
+offset_bottom = 302.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleLeftLarge" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.65)
+layout_mode = 0
+offset_left = 151.0
+offset_top = 303.0
+offset_right = 191.0
+offset_bottom = 343.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleTopRight" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.6)
+layout_mode = 0
+offset_left = 986.0
+offset_top = 116.0
+offset_right = 1011.0
+offset_bottom = 141.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleTopRightSmall" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.5)
+layout_mode = 0
+offset_left = 1020.0
+offset_top = 134.0
+offset_right = 1035.0
+offset_bottom = 149.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleRightLarge" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.6)
+layout_mode = 0
+offset_left = 1067.0
+offset_top = 287.0
+offset_right = 1111.0
+offset_bottom = 331.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BubbleRightSmall" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 0.8)
+layout_mode = 0
+offset_left = 1077.0
+offset_top = 463.0
+offset_right = 1098.0
+offset_bottom = 484.0
+mouse_filter = 2
+texture = ExtResource("7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StarTopLeft" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 1.0)
+layout_mode = 0
+offset_left = 74.0
+offset_top = 78.0
+offset_right = 102.0
+offset_bottom = 106.0
+mouse_filter = 2
+texture = ExtResource("8")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StarTopLeftSmall" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 1.0)
+layout_mode = 0
+offset_left = 119.0
+offset_top = 110.0
+offset_right = 138.0
+offset_bottom = 129.0
+mouse_filter = 2
+texture = ExtResource("8")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StarRight" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 1.0)
+layout_mode = 0
+offset_left = 1111.0
+offset_top = 427.0
+offset_right = 1131.0
+offset_bottom = 447.0
+mouse_filter = 2
+texture = ExtResource("8")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Title" type="TextureRect" parent="Composition"]
 layout_mode = 0
@@ -60,9 +182,9 @@ stretch_mode = 5
 
 [node name="Solo" type="TextureButton" parent="Composition"]
 layout_mode = 0
-offset_left = 829.0
+offset_left = 794.0
 offset_top = 535.0
-offset_right = 945.0
+offset_right = 910.0
 offset_bottom = 622.5
 tooltip_text = "Play with one hand"
 texture_normal = ExtResource("5")
@@ -80,36 +202,28 @@ texture_normal = ExtResource("6")
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="Separator" type="Label" parent="Composition"]
+[node name="Separator" type="TextureRect" parent="Composition"]
+modulate = Color(1, 1, 1, 1.0)
 layout_mode = 0
-offset_left = 667.0
-offset_top = 643.0
-offset_right = 697.0
-offset_bottom = 690.0
+offset_left = 671.0
+offset_top = 654.0
+offset_right = 693.0
+offset_bottom = 676.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.96, 1, 0.94, 1)
-theme_override_font_sizes/font_size = 32
-text = "✶"
-horizontal_alignment = 1
+texture = ExtResource("8")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="Options" type="Button" parent="Composition"]
+[node name="Options" type="TextureButton" parent="Composition"]
 layout_mode = 0
 offset_left = 704.0
-offset_top = 641.0
+offset_top = 646.0
 offset_right = 849.0
-offset_bottom = 694.0
-theme_override_colors/font_color = Color(0.96, 1, 0.94, 1)
-theme_override_colors/font_hover_color = Color(1, 0.94, 0.75, 1)
-theme_override_colors/font_focus_color = Color(1, 0.94, 0.75, 1)
-theme_override_colors/font_pressed_color = Color(0.73, 0.95, 0.95, 1)
-theme_override_colors/font_shadow_color = Color(0.17, 0.2, 0.4, 0.8)
-theme_override_constants/shadow_offset_y = 3
-theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("NoBox")
-theme_override_styles/hover = SubResource("NoBox")
-theme_override_styles/pressed = SubResource("NoBox")
-theme_override_styles/focus = SubResource("NoBox")
-text = "options"
+offset_bottom = 689.0
+tooltip_text = "Options"
+texture_normal = ExtResource("9")
+ignore_texture_size = true
+stretch_mode = 5
 
 [node name="OptionsOverlay" type="Control" parent="."]
 visible = false

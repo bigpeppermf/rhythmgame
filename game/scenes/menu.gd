@@ -13,7 +13,7 @@ const DESIGN_SIZE := Vector2(1280, 720)
 @onready var play: TextureButton = $Composition/Play
 @onready var solo: TextureButton = $Composition/Solo
 @onready var calibrate: TextureButton = $Composition/Calibrate
-@onready var options: Button = $Composition/Options
+@onready var options: TextureButton = $Composition/Options
 @onready var overlay: Control = $OptionsOverlay
 @onready var options_panel: PanelContainer = $OptionsOverlay/Panel
 @onready var input_button: Button = $OptionsOverlay/Panel/Margin/Rows/Input
@@ -122,6 +122,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _style_options() -> void:
 	var theme := Theme.new()
+	theme.default_font = preload("res://assets/fonts/poppins/Poppins-Medium.ttf")
 	theme.default_font_size = 20
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = Color("244c70")
