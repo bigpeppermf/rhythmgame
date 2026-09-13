@@ -69,21 +69,23 @@ def approx(a: float, b: float, eps: float = 1e-6) -> bool:
     return abs(a - b) < eps
 
 
-def main() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        chart_path = Path(tmp) / "sample.chart"
-        out_path = Path(tmp) / "out.json"
-        chart_path.write_text(SAMPLE_CHART)
+def run(chart_path: Path, out_path: Path, *extra_args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(CONVERTER), str(chart_path), "--out", str(out_path), *extra_args],
+        capture_output=True, text=True)
 
-        result = subprocess.run(
-            [sys.executable, str(CONVERTER), str(chart_path),
-             "--out", str(out_path), "--audio", "res://audio/song.ogg"],
-            capture_output=True, text=True)
-        check(result.returncode == 0, f"converter exits 0, stderr: {result.stderr.strip()}")
-        check("dropped 1 note" in result.stderr,
-              "warns about the one note that had no hand left")
 
-        chart = json.loads(out_path.read_text())
+def run_two_hand(tmp: str) -> None:
+    chart_path = Path(tmp) / "sample.chart"
+    out_path = Path(tmp) / "out.json"
+    chart_path.write_text(SAMPLE_CHART)
+
+    result = run(chart_path, out_path, "--audio", "res://audio/song.ogg")
+    check(result.returncode == 0, f"converter exits 0, stderr: {result.stderr.strip()}")
+    check("dropped 1 note" in result.stderr,
+          "warns about the one note that had no hand left")
+
+    chart = json.loads(out_path.read_text())
 
     check(chart["title"] == "Test Song", "title read from the Name field")
     check(chart["bpm"] == 120.0, "output bpm is the *first* tempo, not a later one")
@@ -131,6 +133,70 @@ def main() -> None:
     check((20.8, 0) in by_beat_slot,
           "note after the tempo change lands at 20.8 beats, proving the tempo "
           "map was used across the change rather than a single fixed BPM")
+
+
+def run_solo_mode(tmp: str) -> None:
+    chart_path = Path(tmp) / "sample.chart"
+    out_path = Path(tmp) / "out_solo.json"
+    chart_path.write_text(SAMPLE_CHART)
+
+    result = run(chart_path, out_path, "--audio", "res://audio/solo.ogg", "--hands", "1")
+    check(result.returncode == 0, f"solo mode exits 0, stderr: {result.stderr.strip()}")
+    check("collapsed 3 chord" in result.stderr,
+          "reports the 3 chords (at beats 4, 5, 6) that had to collapse to one note")
+
+    notes = json.loads(out_path.read_text())["notes"]
+    # One note per tick group (12 in the source), never two - there is only
+    # one hand to give it to.
+    check(len(notes) == 12, f"expected 12 output notes (one per tick), got {len(notes)}")
+    check(all(n["slot"] == 0 for n in notes), "every note is on slot 0 (the only hand)")
+    check(all(n["x"] == 0.5 for n in notes), "every note sits on the centred solo lane")
+
+    by_beat = {n["beat"]: n for n in notes}
+    check(approx(by_beat[4.0]["y"], 0.85),
+          "green+orange chord -> the higher fret (orange) wins as the lead note")
+    check(approx(by_beat[6.0]["y"], 0.85),
+          "green+orange+yellow chord -> orange (highest fret) still wins")
+    check(by_beat[8.0]["type"] == "hold", "a real hold survives solo mode too")
+
+
+def run_copy_audio(tmp: str) -> None:
+    folder = Path(tmp) / "song_folder"
+    folder.mkdir()
+    chart_path = folder / "notes.chart"
+    chart_path.write_text(SAMPLE_CHART)
+    (folder / "song.ogg").write_bytes(b"not really audio, just needs to exist")
+
+    game_dir = Path(tmp) / "game"
+    out_path = game_dir / "charts" / "out.json"
+    out_path.parent.mkdir(parents=True)
+
+    result = run(chart_path, out_path, "--audio", "res://audio/mysong.ogg", "--copy-audio")
+    check(result.returncode == 0, f"--copy-audio exits 0, stderr: {result.stderr.strip()}")
+
+    dest = game_dir / "audio" / "mysong.ogg"
+    check(dest.is_file(), f"audio copied to {dest} (next to charts/, matching --audio's name)")
+    check(f"copied" in result.stdout, "prints what it copied")
+
+
+def run_copy_audio_missing(tmp: str) -> None:
+    """No audio next to the chart: still produces a chart, just warns."""
+    folder = Path(tmp) / "no_audio_folder"
+    folder.mkdir()
+    chart_path = folder / "notes.chart"
+    chart_path.write_text(SAMPLE_CHART)
+    out_path = folder / "out.json"
+
+    result = run(chart_path, out_path, "--copy-audio")
+    check(result.returncode == 0,
+          "missing audio for --copy-audio still produces a chart (not a hard error)")
+    check("no audio file" in result.stderr, "warns that no audio file was found to copy")
+
+
+def main() -> None:
+    for fn in (run_two_hand, run_solo_mode, run_copy_audio, run_copy_audio_missing):
+        with tempfile.TemporaryDirectory() as tmp:
+            fn(tmp)
 
     print(f"\n{'ALL PASS' if failures == 0 else 'FAILURES'} "
           f"({failures} failure{'' if failures == 1 else 's'})")

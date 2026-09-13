@@ -11,12 +11,17 @@ extends Node3D
 signal song_finished(score: ScoreState, chart: Chart)
 signal quit_to_menu
 
-const CHART_PATH := "res://charts/test.json"
+## Overridable so the same scene serves both the two-hand game and the
+## one-hand solo mode (see main.gd) - only the chart and the field's hand
+## count differ between them.
+@export var chart_path := "res://charts/test.json"
 ## Grace after the last note resolves, so its hit flash is seen before the
 ## results screen replaces it.
 const OUTRO := 1.2
 ## Swap this (or set it before _ready) to restyle the entire game.
 @export var skin_path := "res://visual/default_skin.tres"
+## One hand, one centred lane - see Field3D.solo. Set before _ready.
+@export var solo_mode := false
 
 var chart: Chart
 var judge: Judge
@@ -26,9 +31,14 @@ var score := ScoreState.new()
 var _hud: Label
 var _cam: Camera3D
 var _outro := -1.0
+## True when the chart's audio file isn't there yet. Not an error: expected
+## while prototyping a chart (hand-authored or GH-converted) before the real
+## track has been dropped into game/audio/.
+var _missing_audio := false
 
 
 func _ready() -> void:
+	Field3D.solo = solo_mode
 	var skin: GameSkin = load(skin_path)
 	if skin == null:
 		push_warning("no skin at %s; falling back to defaults" % skin_path)
@@ -44,7 +54,7 @@ func _ready() -> void:
 	add_child(judge)
 	judge.note_judged.connect(_on_judged)
 
-	chart = Chart.load_from(CHART_PATH)
+	chart = Chart.load_from(chart_path)
 	if chart != null:
 		for w in chart.lint(2.0, Field3D.track):
 			push_warning("chart lint: %s" % w)
@@ -97,10 +107,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _start() -> void:
 	if chart == null:
 		return
+	_outro = -1.0
+	_missing_audio = not ResourceLoader.exists(chart.audio_path)
+	if _missing_audio:
+		Conductor.stop()
+		field.clear()
+		return
 	score.reset()
 	field.clear()
 	judge.begin(chart)
-	_outro = -1.0
 	Conductor.play(load(chart.audio_path), chart.bpm)
 
 
@@ -139,7 +154,10 @@ func _on_judged(n: Note) -> void:
 func _update_hud() -> void:
 	var lines := PackedStringArray()
 	if chart == null:
-		lines.append("no chart at %s" % CHART_PATH)
+		lines.append("no chart at %s" % chart_path)
+	elif _missing_audio:
+		lines.append("%s  -  no audio yet at %s" % [chart.title, chart.audio_path])
+		lines.append("drop the track in, then SPACE to retry")
 	elif not Conductor.playing:
 		lines.append("%s  -  %d notes  -  SPACE to start" % [chart.title, chart.notes.size()])
 		for w in chart.warnings:

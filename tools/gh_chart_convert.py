@@ -8,10 +8,18 @@ get something playable today, without hand-authoring beats.
     python3 tools/gh_chart_convert.py song.chart --audio res://audio/song.ogg
     python3 tools/gh_chart_convert.py song.chart --difficulty Hard --out game/charts/song.json
 
-## The lossy part: 5 frets, 2 hands
+Prototyping one-handed against the "Play (1H)" menu option, straight from a
+Clone Hero song folder, audio included:
+
+    python3 tools/gh_chart_convert.py SongFolder/notes.chart --hands 1 \\
+        --out game/charts/solo.json --audio res://audio/solo.ogg --copy-audio
+
+## The lossy part: 5 frets, fewer hands
 
 This game has one hand per lane; Guitar Hero has five frets on one guitar.
-There's no faithful mapping, only a reasonable one:
+There's no faithful mapping, only a reasonable one.
+
+With --hands 2 (the default, for the real two-hand game):
 
     green, red      (frets 0, 1)  -> left hand  (slot 0)
     blue, orange    (frets 3, 4)  -> right hand (slot 1)
@@ -23,10 +31,14 @@ There's no faithful mapping, only a reasonable one:
 A chord that already uses both hands can't take a third note - that
 information is simply lost, same as it would be for any 5-to-2 mapping.
 
-Fret height (0=green .. 4=orange) becomes vertical position: green is near
-the top of its lane, orange near the bottom, red/yellow/blue between. That
-preserves the shape of the original chart even though the hand mapping is
-approximate.
+With --hands 1 (for the "Play (1H)" solo prototyping mode), every note goes
+to the single centred lane. A chord collapses to its highest fret - treated
+as the lead line - since one hand can only be in one place.
+
+Fret height (0=green .. 4=orange) becomes vertical position either way: green
+is near the top of its lane, orange near the bottom, red/yellow/blue between.
+That preserves the shape of the original chart even though the hand mapping
+is approximate.
 
 ## The exact part: timing
 
@@ -42,7 +54,9 @@ seconds first and converted to "beat" only as a units question.
 import argparse
 import json
 import re
+import shutil
 import sys
+from pathlib import Path
 
 # Guitar Hero fret numbers, as they appear in "tick = N fret sustain" lines.
 FRET_GREEN, FRET_RED, FRET_YELLOW, FRET_BLUE, FRET_ORANGE = 0, 1, 2, 3, 4
@@ -51,6 +65,10 @@ REAL_FRETS = {FRET_GREEN, FRET_RED, FRET_YELLOW, FRET_BLUE, FRET_ORANGE, FRET_OP
 
 LEFT, RIGHT = 0, 1
 LANE_X = [0.29, 0.71]  # must match game/gameplay/field_3d.gd Field3D.TRACK_X
+SOLO_X = 0.5           # must match Field3D.SOLO_TRACK_X
+
+# Common filenames in a Clone Hero song folder, most specific first.
+AUDIO_CANDIDATES = ["song.ogg", "song.opus", "song.mp3", "song.wav", "guitar.ogg"]
 
 # A sustain shorter than this many beats is charting noise (or a strum artifact),
 # not a real hold - treat it as a tap. A sixteenth note is a generous cutoff.
@@ -177,12 +195,32 @@ def assign_hand(frets_this_tick: set[int], fret: int, toggle: list[int]) -> int 
     return toggle[0]
 
 
+def _make_note(tick: int, fret: int, sustain_ticks: int, slot: int, x: float,
+               tempo: TempoMap, spb: float) -> dict:
+    t0 = tempo.seconds(tick)
+    t1 = tempo.seconds(tick + sustain_ticks) if sustain_ticks > 0 else t0
+    length_beats = (t1 - t0) / spb
+    note = {
+        "beat": round(t0 / spb, 4),
+        "slot": slot,
+        "x": x,
+        "y": round(fret_y(fret), 3),
+        "type": "hold" if length_beats >= MIN_HOLD_BEATS else "tap",
+    }
+    if length_beats >= MIN_HOLD_BEATS:
+        note["length"] = round(length_beats, 4)
+    return note
+
+
 def convert(notes: list[tuple[int, int, int]], tempo: TempoMap,
-            output_bpm: float) -> list[dict]:
+            output_bpm: float, hands: int) -> list[dict]:
     spb = 60.0 / output_bpm
     by_tick: dict[int, list[tuple[int, int]]] = {}
     for tick, fret, sustain in notes:
         by_tick.setdefault(tick, []).append((fret, sustain))
+
+    if hands == 1:
+        return _convert_solo(by_tick, tempo, spb)
 
     out = []
     toggle = [0]
@@ -190,29 +228,47 @@ def convert(notes: list[tuple[int, int, int]], tempo: TempoMap,
     for tick in sorted(by_tick):
         frets_here = {f for f, _ in by_tick[tick]}
         for fret, sustain_ticks in by_tick[tick]:
-            hands = (LEFT, RIGHT) if fret == FRET_OPEN else [assign_hand(frets_here, fret, toggle)]
-            for slot in hands:
+            hand_slots = (LEFT, RIGHT) if fret == FRET_OPEN \
+                else [assign_hand(frets_here, fret, toggle)]
+            for slot in hand_slots:
                 if slot is None:
                     dropped += 1
                     continue
-                t0 = tempo.seconds(tick)
-                t1 = tempo.seconds(tick + sustain_ticks) if sustain_ticks > 0 else t0
-                length_beats = (t1 - t0) / spb
-                note = {
-                    "beat": round(t0 / spb, 4),
-                    "slot": slot,
-                    "x": LANE_X[slot],
-                    "y": round(fret_y(fret), 3),
-                    "type": "hold" if length_beats >= MIN_HOLD_BEATS else "tap",
-                }
-                if length_beats >= MIN_HOLD_BEATS:
-                    note["length"] = round(length_beats, 4)
-                out.append(note)
+                out.append(_make_note(tick, fret, sustain_ticks, slot, LANE_X[slot],
+                                       tempo, spb))
     if dropped:
         print(f"warning: dropped {dropped} note(s) that needed a third hand "
               f"(a chord already using both slots)", file=sys.stderr)
     out.sort(key=lambda n: (n["beat"], n["slot"]))
     return out
+
+
+def _convert_solo(by_tick: dict[int, list[tuple[int, int]]], tempo: TempoMap,
+                   spb: float) -> list[dict]:
+    """One hand, one lane: a chord collapses to its highest fret (the lead
+    line), since a single cursor can only be in one place at a time."""
+    out = []
+    collapsed = 0
+    for tick in sorted(by_tick):
+        entries = by_tick[tick]
+        if len(entries) > 1:
+            collapsed += 1
+        fret, sustain_ticks = max(entries, key=lambda e: e[0])
+        out.append(_make_note(tick, fret, sustain_ticks, LEFT, SOLO_X, tempo, spb))
+    if collapsed:
+        print(f"note: collapsed {collapsed} chord(s) to a single note (one-hand mode)",
+              file=sys.stderr)
+    out.sort(key=lambda n: n["beat"])
+    return out
+
+
+def find_audio(chart_file: str) -> str | None:
+    folder = Path(chart_file).resolve().parent
+    for name in AUDIO_CANDIDATES:
+        candidate = folder / name
+        if candidate.is_file():
+            return str(candidate)
+    return None
 
 
 def main() -> None:
@@ -228,6 +284,13 @@ def main() -> None:
                     help="exact .chart section name to read, overriding "
                          "--difficulty (e.g. ExpertDoubleBass)")
     ap.add_argument("--title", default=None)
+    ap.add_argument("--hands", type=int, default=2, choices=[1, 2],
+                    help="2 (default) for the real two-hand game, "
+                         "1 for the Play (1H) solo prototyping mode")
+    ap.add_argument("--copy-audio", action="store_true",
+                    help="look for a song audio file next to the .chart "
+                         "(song.ogg, song.mp3, ...) and copy it to where "
+                         "--audio says, so the chart is playable immediately")
     args = ap.parse_args()
 
     with open(args.chart_file, encoding="utf-8-sig") as f:
@@ -250,7 +313,7 @@ def main() -> None:
         sys.exit(f"error: [{track_name}] has no notes")
 
     output_bpm = round(tempo.first_bpm(), 3)
-    chart_notes = convert(notes, tempo, output_bpm)
+    chart_notes = convert(notes, tempo, output_bpm, args.hands)
 
     title = args.title
     if title is None:
@@ -270,6 +333,22 @@ def main() -> None:
     }
     with open(args.out, "w") as f:
         json.dump(chart, f, indent=1)
+
+    if args.copy_audio:
+        src = find_audio(args.chart_file)
+        if src is None:
+            print(f"warning: --copy-audio found no audio file next to "
+                  f"{args.chart_file} (looked for {', '.join(AUDIO_CANDIDATES)})",
+                  file=sys.stderr)
+        else:
+            # "game/charts/x.json" and "res://audio/name" both assume the same
+            # game/ layout, so the copy destination falls out of --out's own
+            # parent directory rather than needing a third path to keep in sync.
+            game_dir = Path(args.out).resolve().parent.parent
+            dest = game_dir / "audio" / args.audio.rsplit("/", 1)[-1]
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(src, dest)
+            print(f"copied {src} -> {dest}")
 
     tempo_changes = len(tempo._changes)
     holds = sum(1 for n in chart_notes if n["type"] == "hold")
