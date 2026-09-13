@@ -2,7 +2,7 @@ extends Sprite3D
 ## Shared gesture artwork for taps and hold heads. The parent remains placed
 ## and oriented by the playfield; only this visual child faces the camera.
 
-const HEIGHT := 1.15
+const HEIGHT := 1.4
 const TEXTURES := {
 	&"OPEN_PALM": preload("res://assets/menu/open_palm.png"),
 	&"FIST": preload("res://assets/menu/fist.png"),
