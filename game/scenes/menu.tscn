@@ -1,6 +1,17 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scenes/menu.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/menu/ocean_motion_bg.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/menu/main_title.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/menu/play_button.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/menu/1_hand.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/menu/calibrate.png" id="6"]
+
+[sub_resource type="AtlasTexture" id="PlayArt"]
+atlas = ExtResource("4")
+region = Rect2(120, 0, 450, 266)
+
+[sub_resource type="StyleBoxEmpty" id="NoBox"]
 
 [node name="menu" type="Control"]
 layout_mode = 3
@@ -8,3 +19,162 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("2")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Composition" type="Control" parent="."]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="Title" type="TextureRect" parent="Composition"]
+layout_mode = 0
+offset_left = 190.0
+offset_top = 98.0
+offset_right = 1090.0
+offset_bottom = 476.0
+mouse_filter = 2
+texture = ExtResource("3")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Play" type="TextureButton" parent="Composition"]
+layout_mode = 0
+offset_left = 530.0
+offset_top = 470.0
+offset_right = 810.0
+offset_bottom = 635.5
+tooltip_text = "Play with two hands"
+texture_normal = SubResource("PlayArt")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Solo" type="TextureButton" parent="Composition"]
+layout_mode = 0
+offset_left = 829.0
+offset_top = 535.0
+offset_right = 945.0
+offset_bottom = 622.5
+tooltip_text = "Play with one hand"
+texture_normal = ExtResource("5")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Calibrate" type="TextureButton" parent="Composition"]
+layout_mode = 0
+offset_left = 483.0
+offset_top = 646.0
+offset_right = 653.0
+offset_bottom = 689.0
+tooltip_text = "Calibrate input timing"
+texture_normal = ExtResource("6")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Separator" type="Label" parent="Composition"]
+layout_mode = 0
+offset_left = 667.0
+offset_top = 643.0
+offset_right = 697.0
+offset_bottom = 690.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.96, 1, 0.94, 1)
+theme_override_font_sizes/font_size = 32
+text = "✶"
+horizontal_alignment = 1
+
+[node name="Options" type="Button" parent="Composition"]
+layout_mode = 0
+offset_left = 704.0
+offset_top = 641.0
+offset_right = 849.0
+offset_bottom = 694.0
+theme_override_colors/font_color = Color(0.96, 1, 0.94, 1)
+theme_override_colors/font_hover_color = Color(1, 0.94, 0.75, 1)
+theme_override_colors/font_focus_color = Color(1, 0.94, 0.75, 1)
+theme_override_colors/font_pressed_color = Color(0.73, 0.95, 0.95, 1)
+theme_override_colors/font_shadow_color = Color(0.17, 0.2, 0.4, 0.8)
+theme_override_constants/shadow_offset_y = 3
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("NoBox")
+theme_override_styles/hover = SubResource("NoBox")
+theme_override_styles/pressed = SubResource("NoBox")
+theme_override_styles/focus = SubResource("NoBox")
+text = "options"
+
+[node name="OptionsOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Dim" type="ColorRect" parent="OptionsOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.04, 0.12, 0.23, 0.65)
+
+[node name="Panel" type="PanelContainer" parent="OptionsOverlay"]
+layout_mode = 0
+offset_right = 480.0
+offset_bottom = 576.0
+
+[node name="Margin" type="MarginContainer" parent="OptionsOverlay/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="Rows" type="VBoxContainer" parent="OptionsOverlay/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Options"
+horizontal_alignment = 1
+
+[node name="Input" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "Input"
+clip_text = true
+
+[node name="Offset" type="Label" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Calibration offset"
+horizontal_alignment = 1
+
+[node name="TwoHands" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "The Entertainer · 2 hands"
+
+[node name="OneHand" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "The Entertainer · 1 hand"
+
+[node name="Editor" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "Edit chart"
+
+[node name="Quit" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "Quit game"
+
+[node name="Close" type="Button" parent="OptionsOverlay/Panel/Margin/Rows"]
+layout_mode = 2
+text = "Back to ocean"
