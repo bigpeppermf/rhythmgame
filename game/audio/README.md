@@ -1,25 +1,23 @@
 # Audio
 
-Nothing here is committed. Drop your own audio files in locally.
+Audio files stay local and are ignored by Git. Drop an Ogg Vorbis, WAV, or MP3
+file here and set the chart's `audio` field to `res://audio/<filename>`.
 
-## Solo mode (Play (1H) on the menu)
+The normal Play option uses `Settings.chart_path`; Play (1H) uses
+`charts/solo.json`. The editor can open and playtest other charts. See
+[chart authoring](../charts/README.md) and [the editor guide](../../docs/CHARTING.md).
 
-One hand, one centred lane - see `../charts/README.md` for how to author
-`charts/solo.json`.
+`charts/song.json` is an empty template for a new song. Set its BPM, offset,
+and notes before selecting it. A missing audio file displays a message in
+the game instead of starting a broken playback session.
 
-1. Drop the track here, e.g. `solo.ogg` (`.wav`/`.mp3` also load).
-2. Make sure `charts/solo.json`'s `"audio"` field points at it.
+Generate the 120 BPM click track used by calibration and test charts from
+the repository root:
 
-Until it's there, `charts/solo.json` ships with an empty `notes` array and
-an `audio` path that doesn't exist yet. Play still runs - the HUD just
-reports there's no audio until the file shows up, instead of erroring.
+```bash
+python3 tools/make_click_track.py
+```
 
-## Two-hand mode (Play on the menu)
-
-Currently points at `charts/test.json`, the engine's own Judge/Conductor
-test fixture - see `tools/make_click_track.py`. A hand-authored song and
-chart for the real two-hand game will replace this later.
-
-`click_120.wav` is that fixture's audio, regenerated with
-`../../tools/make_click_track.py game/audio/click_120.wav`. It has nothing
-to do with either chart above - don't point either "audio" field at it.
+During gameplay, successive misses gradually lower music volume (down to
+-24 dB). A hit restores the target volume; a restart resets it. The timing
+clock continues running throughout the fade.

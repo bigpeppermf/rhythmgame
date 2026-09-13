@@ -37,13 +37,10 @@ Thumbs.db
 .claude/
 
 # Audio is never committed: the click track is regenerated with
-# tools/make_click_track.py, real songs (hand-authored or GH-converted) are
+# tools/make_click_track.py; real songs are
 # dropped in locally (see game/audio/README.md).
 game/audio/*
 !game/audio/README.md
 
-# --- Local GH/Clone Hero song folders (source material for
-# tools/gh_chart_convert.py) - other people's copyrighted content, never ours
-# to commit. game/charts/*.json is a separate, tracked thing: this only
-# ignores the raw song folders at the repo root.
+# Raw local song folders. Authored game/charts/*.json stays tracked.
 /charts/
