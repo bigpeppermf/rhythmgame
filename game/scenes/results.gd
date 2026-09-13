@@ -82,9 +82,10 @@ func _draw() -> void:
 
 	_text("RESULTS", Vector2(x, y), 17, sk.ui_faint)
 	y += 58.0
-	_text("%d" % score.score, Vector2(x, y), 46, sk.ui_text)
+	_text("Score %d" % score.score, Vector2(x, y), 46, sk.ui_text)
 	y += 34.0
-	_text("%.1f%%    best combo x%d" % [score.accuracy(), score.best_combo],
+	_text("Combo %d    Multiplier x%d    Best Combo %d" %
+		[score.combo, score.multiplier, score.best_combo],
 		Vector2(x, y), 17, sk.ui_dim)
 
 	y += 52.0

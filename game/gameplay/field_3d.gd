@@ -21,10 +21,11 @@ extends RefCounted
 ## World height of a panel. Tall, because height is the only charted axis.
 const HEIGHT := 7.2
 ## World x of the near (hit) edge - the outer edge of each panel.
-const OUTER_X := 4.0
+const OUTER_X := 6.0
 ## World x of the far edge. Smaller than OUTER_X, so the panels angle inward
-## as they recede.
-const INNER_X := 1.5
+## as they recede. Both edges are shifted outward equally to leave room
+## for the centered score while preserving panel angle and travel.
+const INNER_X := 3.5
 
 ## World units travelled per second along the panel. A readability knob, not a
 ## difficulty one - it changes how far apart notes look, not how hard they are.

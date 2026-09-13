@@ -1,18 +1,22 @@
 class_name ScoreState
 extends RefCounted
-## Score, combo and accuracy. Deliberately separate from Judge: the Judge
+## Score and combo. Deliberately separate from Judge: the Judge
 ## decides what happened, this decides what it is worth.
 
 const VALUE := {
 	Note.Verdict.PERFECT: 100,
-	Note.Verdict.GREAT: 70,
-	Note.Verdict.GOOD: 40,
+	Note.Verdict.GREAT: 75,
+	Note.Verdict.GOOD: 50,
 	Note.Verdict.MISS: 0,
 }
 
 var score: int = 0
 var combo: int = 0
 var best_combo: int = 0
+## Derived from combo so misses and resets cannot leave a stale multiplier.
+var multiplier: int:
+	get:
+		return mini(1 + combo / 10, 5)
 var counts: Dictionary = {}
 var judged: int = 0
 
@@ -42,9 +46,8 @@ func apply(n: Note) -> void:
 
 	combo += 1
 	best_combo = maxi(best_combo, combo)
-	# Combo multiplier caps at 4x so a single early miss is survivable.
-	var mult: int = clampi(1 + combo / 10, 1, 4)
-	score += VALUE[n.verdict] * mult
+	# Increment first: the threshold hit earns the new multiplier.
+	score += VALUE[n.verdict] * multiplier
 
 
 ## Percentage of the maximum achievable so far.
