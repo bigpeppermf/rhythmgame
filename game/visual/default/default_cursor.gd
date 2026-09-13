@@ -4,24 +4,34 @@ extends CursorView
 ## Opacity follows tracking confidence, so degraded input is visible rather
 ## than silently wrong.
 
-var _mesh: MeshInstance3D
+var _art: Sprite3D
 var _color: Color
+const HEIGHT := 1.25
+const TEXTURES := [
+	preload("res://assets/menu/left_jelly.png"),
+	preload("res://assets/menu/right_jelly.png"),
+]
 
 
 func _ready() -> void:
-	_mesh = MeshInstance3D.new()
-	add_child(_mesh)
+	_art = Sprite3D.new()
+	_art.name = "JellyCursor"
+	_art.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_art.shaded = false
+	_art.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_art.render_priority = 2
+	add_child(_art)
 
 
-func configure(_slot: int, skin: GameSkin) -> void:
+func configure(slot: int, skin: GameSkin) -> void:
 	_color = skin.cursor_color
-	var s := SphereMesh.new()
-	s.radius = skin.cursor_radius
-	s.height = skin.cursor_radius * 2.0
-	_mesh.mesh = s
+	var texture: Texture2D = TEXTURES[clampi(slot, 0, TEXTURES.size() - 1)]
+	_art.texture = texture
+	_art.pixel_size = HEIGHT / texture.get_height()
+	_art.modulate = Color.WHITE
 
 
 func update_view(confidence: float, state: HandObservation.State) -> void:
 	var c := _color
 	c.a = 0.12 if state == HandObservation.State.LOST else clampf(confidence, 0.2, 1.0)
-	_mesh.material_override = Emissive.make(c)
+	_art.modulate = Color(1, 1, 1, c.a)

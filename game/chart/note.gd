@@ -14,9 +14,9 @@ var slot: int = 0
 var kind: Kind = Kind.TAP
 ## HOLD only: how long the hand must stay inside, in seconds.
 var length: float = 0.0
-## Hand shape the note asks for: one of GESTURES, or empty for any. Judged the
-## same way as position - satisfied if the hand held it on ANY frame while
-## inside the note's window - so a one-frame classifier flicker cannot fail it.
+## Hand shape the note asks for: one of GESTURES, or empty for any. Taps check
+## the gesture at their closest approach; holds earn progress only while the
+## required gesture is held.
 var gesture: StringName = &""
 
 const GESTURES: Array[StringName] = [&"OPEN_PALM", &"FIST", &"THUMBS_UP", &"PINCH"]
@@ -30,7 +30,8 @@ var timing_error: float = 0.0
 ## Distance from note centre when hit. Lower is better.
 var hit_distance: float = 0.0
 var _entered: bool = false
-## Runtime: the required gesture was seen while the hand was inside.
+## Runtime: the required gesture matched at the judged tap observation, or the
+## hold accumulated valid gesture progress.
 var _gesture_ok: bool = false
 
 

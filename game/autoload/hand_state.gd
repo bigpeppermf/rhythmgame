@@ -25,10 +25,9 @@ var hands: Array[HandObservation] = []
 var source: HandSource = null
 ## Switch to the camera automatically when its packets appear.
 var auto_switch: bool = true
-## True once any hand has reported a real gesture. Until then, notes that ask
-## for a gesture do not enforce it: a tracker run without --gestures, or the
-## mouse mock, would otherwise cap every such note for a reason the player
-## cannot see.
+## True once any hand has reported a real gesture. Judging always enforces
+## required shapes; this flag only lets the HUD explain whether gesture data is
+## arriving from the tracker.
 var gestures_seen: bool = false
 
 var _udp: UdpHandSource

@@ -34,12 +34,9 @@ const HOLD_GRAB := 0.15
 
 ## Minimum classifier confidence for a hand shape to count.
 const GESTURE_CONF := 0.5
-## Right place, right time, wrong hand shape: the verdict can be no better
-## than this. GOOD rather than MISS because the classifier is wrong on the
-## order of one frame in ten, and a miss for a reason the player cannot see
-## reads as the game being broken. Set to Note.Verdict.MISS to make the
-## gesture the whole note.
-const WRONG_GESTURE_CAP := Note.Verdict.GOOD
+## A displayed gesture is part of the note requirement. Being in the right
+## place at the right time with another shape does not hit that note.
+const WRONG_GESTURE_CAP := Note.Verdict.MISS
 ## Fraction of a hold that must be held to count as hit at all.
 const HOLD_PASS := 0.5
 
@@ -81,8 +78,6 @@ func _admit(now: float) -> void:
 func _evaluate(n: Note, now: float, delta: float) -> bool:
 	var hand: HandObservation = HandState.hands[n.slot]
 	var inside: bool = hand.is_usable() and _distance(n) <= HIT_RADIUS
-	if inside and not n._gesture_ok and n.needs_gesture():
-		n._gesture_ok = hand.gesture == n.gesture and hand.gesture_conf >= GESTURE_CONF
 
 	if n.kind == Note.Kind.HOLD:
 		return _evaluate_hold(n, now, delta, hand, inside)
@@ -107,6 +102,10 @@ func _evaluate(n: Note, now: float, delta: float) -> bool:
 			n._entered = true
 			n.timing_error = dt
 			n.hit_distance = _distance(n)
+			# Judge the shape from the same observation that supplied the
+			# note's best timing/position. A correct label on an unrelated
+			# early frame must not validate a later wrong gesture.
+			n._gesture_ok = _gesture_matches(n, hand)
 		if now >= n.time:
 			n.verdict = _cap(n, _grade(absf(n.timing_error), n.hit_distance))
 			note_judged.emit(n)
@@ -141,7 +140,8 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 	# Accumulate only while actually inside, and only once the hold has
 	# started - a hand parked on the note early must not bank credit for time
 	# before the note existed.
-	if inside and now >= n.time:
+	var gesture_ok := _gesture_matches(n, hand)
+	if inside and gesture_ok and now >= n.time:
 		n.held = minf(n.held + delta, n.length)
 	if n.length > 0.0:
 		hold_progress.emit(n, n.held / n.length)
@@ -156,6 +156,9 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 			n.verdict = Note.Verdict.GREAT
 		else:
 			n.verdict = Note.Verdict.GOOD
+		# A hold earns progress only while both its position and gesture are
+		# correct, so its normal completion grade already includes the shape.
+		n._gesture_ok = not n.needs_gesture() or n.held > 0.0
 		n.verdict = _cap(n, n.verdict)
 		note_judged.emit(n)
 		return false
@@ -163,15 +166,21 @@ func _evaluate_hold(n: Note, now: float, delta: float, hand: HandObservation,
 	return true
 
 
-## Apply the wrong-shape cap. Requirements are only enforced once the input
-## has reported a gesture at all - see HandState.gestures_seen.
+## Apply the wrong-shape cap. UNKNOWN is deliberately treated as a mismatch:
+## otherwise running the tracker without gesture output awards full points for
+## every shape.
 func _cap(n: Note, v: Note.Verdict) -> Note.Verdict:
-	if v == Note.Verdict.MISS or not n.needs_gesture() or not HandState.gestures_seen:
+	if v == Note.Verdict.MISS or not n.needs_gesture():
 		return v
 	if n._gesture_ok:
 		return v
 	# Verdict enum ascends PENDING, PERFECT, GREAT, GOOD, MISS: worse is larger.
 	return maxi(v, WRONG_GESTURE_CAP) as Note.Verdict
+
+
+func _gesture_matches(n: Note, hand: HandObservation) -> bool:
+	return not n.needs_gesture() or (hand.gesture == n.gesture
+		and hand.gesture_conf >= GESTURE_CONF)
 
 
 ## How far the hand is from the note, along the one axis that is charted.

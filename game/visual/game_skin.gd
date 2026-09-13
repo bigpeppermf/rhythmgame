@@ -32,9 +32,11 @@ extends Resource
 
 @export_group("Lane")
 @export var draw_lane := true
+## Translucent blue surface behind notes. Set alpha to 0 for outlines only.
+@export var panel_color := Color(0.08, 0.19, 0.38, 0.35)
 @export var rail_color := Color(0.45, 0.55, 0.75, 0.30)
-@export var grid_color := Color(0.35, 0.45, 0.70, 0.10)
-@export var hit_plane_color := Color(0.80, 0.90, 1.00, 0.55)
+@export var grid_color := Color(0.68, 0.80, 0.96, 0.28)
+@export var hit_plane_color := Color(0.96, 0.99, 1.00, 0.92)
 ## Faint depth rungs drawn across each panel. 0 for a bare outline.
 @export var grid_columns := 4
 

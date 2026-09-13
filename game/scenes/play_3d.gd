@@ -7,6 +7,7 @@ extends Node3D
 ## changes nothing here.
 ##
 ##   SPACE restart   U udp/mock   TAB switch hand   M mirror   L lose   ESC menu
+##   F3 input diagnostics
 
 signal song_finished(score: ScoreState, chart: Chart)
 signal quit_to_menu
@@ -15,6 +16,8 @@ var chart_path: String = Settings.chart_path
 ## Grace after the last note resolves, so its hit flash is seen before the
 ## results screen replaces it.
 const OUTRO := 1.2
+const SCORE_FONT := preload("res://assets/fonts/cherry_bomb_one/CherryBombOne-Regular.ttf")
+const PLAY_FOV := 44.0
 ## Swap this (or set it before _ready) to restyle the entire game.
 @export var skin_path := "res://visual/default_skin.tres"
 ## One hand, one centred lane - see Field3D.solo. Set before _ready.
@@ -37,6 +40,7 @@ var _preview: CameraPreview
 var _preview_rect: TextureRect
 var _preview_frame: Panel
 var _preview_enabled := true
+var _show_debug := false
 ## True when the chart's audio file isn't there yet. Not an error: expected
 ## while authoring a chart, before the real track has been dropped into
 ## game/audio/.
@@ -55,6 +59,8 @@ func _ready() -> void:
 	field.skin = skin
 	add_child(field)
 	_build_hud()
+	get_viewport().size_changed.connect(_layout_gameplay)
+	_layout_gameplay()
 	_build_preview(skin)
 
 	judge = Judge.new()
@@ -72,15 +78,43 @@ func _build_camera(skin: GameSkin) -> void:
 	_cam = Camera3D.new()
 	# Centred and nearly head-on. Height is the only charted axis, so a steep
 	# downward tilt would foreshorten exactly what the player is judged on.
-	# Far enough back that both panels fit with margins either side. The solo
-	# panel is a normal panel slid to the centre, so the same framing serves it.
+	# A tighter lens enlarges the panels without changing chart or hit geometry.
 	_cam.position = Vector3(0.0, 0.4, 12.0)
 	_cam.rotation_degrees = Vector3(-2.0, 0.0, 0.0)
-	_cam.fov = 56.0
+	_cam.fov = PLAY_FOV
 	add_child(_cam)
 
+	# Render the full-window artwork behind the 3D field, with the HUD above it.
+	var background_layer := CanvasLayer.new()
+	background_layer.layer = -10
+	add_child(background_layer)
+	var background := TextureRect.new()
+	background.texture = preload("res://assets/menu/game_bg.png")
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background_layer.add_child(background)
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bubble_layer := Control.new()
+	bubble_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bubble_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background_layer.add_child(bubble_layer)
+	# Normalized positions keep the bubbles distributed as the window grows.
+	_add_bubble(bubble_layer, 0.08, 0.16, 58.0, 0.62)
+	_add_bubble(bubble_layer, 0.14, 0.31, 30.0, 0.48)
+	_add_bubble(bubble_layer, 0.22, 0.72, 76.0, 0.56)
+	_add_bubble(bubble_layer, 0.34, 0.22, 42.0, 0.45)
+	_add_bubble(bubble_layer, 0.46, 0.84, 24.0, 0.42)
+	_add_bubble(bubble_layer, 0.57, 0.18, 46.0, 0.46)
+	_add_bubble(bubble_layer, 0.63, 0.78, 60.0, 0.52)
+	_add_bubble(bubble_layer, 0.72, 0.28, 82.0, 0.58)
+	_add_bubble(bubble_layer, 0.80, 0.56, 28.0, 0.46)
+	_add_bubble(bubble_layer, 0.88, 0.12, 52.0, 0.62)
+	_add_bubble(bubble_layer, 0.94, 0.38, 38.0, 0.50)
+	_add_bubble(bubble_layer, 0.90, 0.82, 68.0, 0.54)
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	env.background_mode = Environment.BG_CANVAS
+	env.background_canvas_max_layer = -10
 	env.background_color = skin.background_color
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = skin.ambient_color
@@ -90,23 +124,68 @@ func _build_camera(skin: GameSkin) -> void:
 	add_child(world)
 
 
+func _add_bubble(layer: Control, x: float, y: float, diameter: float, opacity: float) -> void:
+	var bubble := TextureRect.new()
+	bubble.texture = preload("res://assets/menu/bubble.png")
+	bubble.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bubble.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bubble.modulate = Color(1, 1, 1, opacity)
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bubble.anchor_left = x
+	bubble.anchor_right = x
+	bubble.anchor_top = y
+	bubble.anchor_bottom = y
+	bubble.offset_left = -diameter * 0.5
+	bubble.offset_top = -diameter * 0.5
+	bubble.offset_right = diameter * 0.5
+	bubble.offset_bottom = diameter * 0.5
+	layer.add_child(bubble)
+
+
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_score_hud = Label.new()
 	_score_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_score_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_score_hud.add_theme_font_size_override("font_size", 22)
+	_score_hud.add_theme_font_override("font", SCORE_FONT)
+	_score_hud.add_theme_font_size_override("font_size", 36)
 	_score_hud.add_theme_color_override("font_color", field.skin.ui_accent)
 	layer.add_child(_score_hud)
 	# Stack the readout in the narrow gap; anchors follow viewport resizing.
 	_score_hud.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_score_hud.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_score_hud.grow_vertical = Control.GROW_DIRECTION_BOTH
+	# Solo's panel occupies the middle, so put the score in the open right side.
+	if solo_mode:
+		_score_hud.anchor_left = 0.78
+		_score_hud.anchor_right = 0.78
 	_hud = Label.new()
-	_hud.position = Vector2(24, 54)
-	_hud.add_theme_font_size_override("font_size", 15)
+	_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud.add_theme_font_override("font", SCORE_FONT)
+	_hud.add_theme_font_size_override("font_size", 24)
+	_hud.add_theme_color_override("font_color", Color(0.98, 1.0, 0.96, 0.96))
+	_hud.add_theme_color_override("font_shadow_color", Color(0.12, 0.20, 0.34, 0.78))
+	_hud.add_theme_constant_override("shadow_offset_x", 2)
+	_hud.add_theme_constant_override("shadow_offset_y", 2)
+	_hud.add_theme_constant_override("line_spacing", 4)
 	layer.add_child(_hud)
+	_hud.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_hud.offset_top = 12
+
+
+func _layout_gameplay() -> void:
+	var screen := get_viewport().get_visible_rect().size
+	var aspect := screen.x / maxf(screen.y, 1.0)
+	# Keep the same horizontal room in narrow windows so the hit edges and
+	# enlarged icons remain visible. Widescreen uses the closer framing.
+	var aspect_scale := maxf(1.0, (16.0 / 9.0) / maxf(aspect, 0.1))
+	_cam.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(PLAY_FOV * 0.5)) * aspect_scale))
+	var ui_scale := clampf(minf(screen.x / 1280.0, screen.y / 720.0), 0.6, 1.5)
+	_score_hud.add_theme_font_size_override("font_size", roundi(36.0 * ui_scale))
+	_hud.add_theme_font_size_override("font_size", roundi(24.0 * ui_scale))
+	_hud.offset_top = roundi(12.0 * ui_scale)
 
 
 ## The self-view sits in the lower-right corner, clear of both panels.
@@ -164,6 +243,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	match event.keycode:
 		KEY_SPACE: _start()
+		KEY_F3:
+			_show_debug = not _show_debug
+			_update_hud()
 		KEY_C:
 			_preview_enabled = not _preview_enabled
 			_layout_preview()
@@ -239,14 +321,19 @@ func _update_hud() -> void:
 			lines.append("lint: " + w)
 	else:
 		lines.append("Combo %d    Best Combo %d" % [score.combo, score.best_combo])
-		lines.append("PERFECT %d  GREAT %d  GOOD %d  MISS %d" % [
+		lines.append("Perfect: %d    Great: %d    Good: %d    Miss: %d" % [
 			score.counts[Note.Verdict.PERFECT], score.counts[Note.Verdict.GREAT],
 			score.counts[Note.Verdict.GOOD], score.counts[Note.Verdict.MISS]])
-		lines.append("t %6.2f    %d/%d" % [
-			Conductor.judge_time(), score.judged, chart.notes.size()])
-		if fader.miss_streak > 0:
+		if _show_debug:
+			lines.append("t %6.2f    %d/%d" % [
+				Conductor.judge_time(), score.judged, chart.notes.size()])
+		if _show_debug and fader.miss_streak > 0:
 			lines.append("music %.0f dB (miss streak %d)" %
 				[Conductor.volume_db, fader.miss_streak])
+	lines.append("F3 input details   ·   SPACE restart   ·   ESC menu")
+	if not _show_debug:
+		_hud.text = "\n".join(lines)
+		return
 	lines.append("")
 	lines.append("input: %s   (U udp/mock, TAB switch, M mirror, L lose, C camera)"
 		% HandState.source_name())
@@ -255,9 +342,9 @@ func _update_hud() -> void:
 	var g0: HandObservation = HandState.hands[0]
 	var g1: HandObservation = HandState.hands[1]
 	if HandState.gestures_seen:
-		lines.append("gestures: L %s %.2f   R %s %.2f   (wrong shape caps at %s)" %
+		lines.append("gestures: L %s %.2f   R %s %.2f   (wrong shape: %s)" %
 			[g0.gesture, g0.gesture_conf, g1.gesture, g1.gesture_conf,
 			Note.verdict_name(Judge.WRONG_GESTURE_CAP)])
 	else:
-		lines.append("gestures: not reported - shape requirements ignored (mock: keys 1-4)")
+		lines.append("gestures: not reported - required shapes will miss (mock: keys 1-4)")
 	_hud.text = "\n".join(lines)

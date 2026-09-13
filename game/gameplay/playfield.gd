@@ -183,6 +183,7 @@ func _build_lane() -> void:
 
 	for slot in Field3D.slot_count():
 		var c: PackedVector3Array = Field3D.corners(slot)
+		_panel(c)
 		var nt: Vector3 = c[0]      # near top
 		var nb: Vector3 = c[1]      # near bottom
 		var ft: Vector3 = c[2]      # far top
@@ -202,6 +203,29 @@ func _build_lane() -> void:
 
 	_line(rungs, skin.grid_color)
 	_line(edges, skin.hit_plane_color)
+
+
+func _panel(corners: PackedVector3Array) -> void:
+	if skin.panel_color.a <= 0.0:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = skin.panel_color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.render_priority = -2
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, mat)
+	for index in [0, 1, 2, 2, 1, 3]:
+		mesh.surface_add_vertex(corners[index])
+	mesh.surface_end()
+	var surface := MeshInstance3D.new()
+	surface.mesh = mesh
+	# Sit just behind the rails and note geometry, without occluding hold trails.
+	surface.position.z = -0.02
+	surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lane.add_child(surface)
 
 
 func _line(pts: PackedVector3Array, col: Color) -> void:

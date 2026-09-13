@@ -3,6 +3,7 @@
  "bpm": 120,
  "audio": "res://audio/click_120.wav",
  "offset": 0.0,
+ "default_gesture": "OPEN_PALM",
  "notes": [
   {
    "beat": 4,
