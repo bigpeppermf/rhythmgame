@@ -111,10 +111,46 @@ is uploaded. `--model path/to/hand_landmarker.task` points at another copy.
 
 ## Run the palm tracker
 
+### Hand-only left/right slots (seated play)
+
+Only your hands need to be visible. There is no body detection, torso selection,
+or enrollment countdown. Run the normal demo; gesture diagnostics are optional:
+
+```bash
+python vision/vertical_demo.py --debug --gesture-debug
+```
+
+Every accepted observation must have the correct anatomical handedness label
+with confidence at least **0.80**: Left can drive only the left slot, Right only
+the right. The existing correction for mirrored camera input is applied once
+before assignment. Position continuity can reject suspicious movement, but never
+turn an opposite-labeled hand into a match. Two confident candidates with the
+same label make that slot ambiguous; the extra hand is never placed in the other
+slot. Uncertain labels produce unavailable input and immediately clear gestures.
+
+New and returning hands require **60 ms of consistent matching observations**;
+already tracked hands update every frame. There is no hand-expiry calibration:
+return after a long absence and the same label checks/confirmation apply. Press
+**C** to clear hand and gesture history manually. Nearby label flips conflict
+with the other slot's recent track and are rejected during its 200 ms history.
+
+Thumb screen position alone is not a reliable left/right test: it changes when
+you rotate the hand, turn palm-to-back, or mirror the image, and the thumb can
+be hidden in a fist. We use the hand model's anatomical classification instead
+of adding a horizontal thumb rule. This still depends on model accuracy;
+a confidently incorrect label can be wrong in real-world anatomy.
+
+Handedness does **not** identify the main player. Another person's left hand can
+still qualify for the left slot, especially after your hand is gone. Keep the
+camera aimed at the player's hand area and test bystander cases in the checklist.
+The former body model, crop, `--body-model`, `--no-player-lock`, and `--body`
+download flag have been removed. No pose model is downloaded or loaded.
+UDP fields, ports, and normalized full-frame coordinates are unchanged.
+
 ### Optional gesture mode
 
 Open palm is the normal input pose. The three action poses are **FIST**,
-**THUMBS_UP**, and **PINCH** (index finger and thumb tips together, with the
+**THUMBS_UP**, and **PINCH** (index finger and thumb tips together away from the palm, with the
 middle, ring, and little fingers loosely curled).
 Enable gesture mode to distinguish these while continuing to track both positions.
 From an activated venv, run:
@@ -136,20 +172,61 @@ No new Python dependencies are required. Plain demo mode still uses the hand
 landmarker and sends the original position-only JSON. `--model` can override
 the path, but the file must match the selected task (hand or gesture).
 
+If MediaPipe reports `ConcatenateTensorVectorCalculator` with
+`Packet isn't the sole owner of the holder`, the demo discards that frame,
+clears gesture state, and recreates the gesture recognizer on the next frame.
+This is recovery from an internal graph failure, not a fix for its underlying
+cause. Camera capture continues; model recreation can briefly delay processing.
+Three consecutive inference failures pause detection while keeping the windows
+open. Press **R** to retry, or **Q/Esc** to quit. Restart-creation failures also
+pause with their error printed. A successful inference resets the retry count.
+After recovery, returning hands must pass the same handedness confirmation.
+No old gestures are replayed. Other inference errors still propagate normally.
+
 Gesture mode uses MediaPipe's Gesture Recognizer in place of the hand landmarker,
 so there is one hand-detection pipeline. Its Open_Palm, Closed_Fist, and Thumb_Up
 classes map to OPEN_PALM, FIST, and THUMBS_UP. Model thresholds are 0.55 for palm
-and thumbs-up, and 0.70 for fist. Hand-shape fallbacks recognize four extended
-fingers as open palm, or an upright straight thumb with curled fingers as thumbs-up.
+and thumbs-up, and 0.70 for fist without geometric support. A Closed_Fist score
+of at least 0.55 can qualify when no finger is extended, the three supporting
+fingers are curled, and the hand is compact: index reach at most 0.65, palm
+clearance at most 0.60, finger clearance at most 0.35, and thumb/index gap at
+most 0.65 (relative to palm size). This keeps separated thumbs and reaching
+pinches out of the lower-confidence fist path. A model None label alone does
+not become FIST. Hand-shape fallbacks recognize four extended
+fingers with separated fingertips as open palm, or an upright straight thumb with
+curled fingers as thumbs-up.
 The same geometry works for either hand; image distances account for frame aspect.
+OPEN_PALM requires thumb/index-tip separation of at least 0.55 of palm size and
+at least 0.18 between every fingertip pair. These checks also gate the model's
+Open_Palm label. An open hand with thumb/index touching is UNKNOWN, since the
+three remaining fingers must be curled for PINCH. Distances use image landmarks
+when available; incorrect landmark positions can still cause misclassification.
+THUMBS_UP requires the thumb to point within 25 degrees of vertical in the camera
+view, both from its base to tip and from its last joint to tip. This direction
+check also applies to the model's Thumb_Up label; missing image landmarks or
+tilts beyond that tolerance cannot qualify. Thumb/index tips must also be separated by at least
+0.55 of palm size, on both the model and fallback paths, to reject touching fists.
+Keep the camera level for a natural straight-up pose.
+This tolerance includes intended poses that measured up to 21.2 degrees during
+live testing. It also accepts smaller intentional tilts; the logged angle alone
+cannot distinguish those from natural pose variation and landmark noise.
 
 PINCH primarily uses image-space thumb/index-tip separation relative to palm size,
 with world landmarks used for hand shape and a loose depth sanity check. It enters
 at gap <= 0.30 of palm size and can remain active to 0.45; the wider band cannot
 activate a new pinch. All three remaining fingers must show bent joints, but
 their fingertips can stay farther out rather than tucking near the palm. Fully
-extended fingers are still rejected. The index must reach toward the thumb
-instead of being fully tucked into a fist. This specific closed-hand shape can
+extended fingers are still rejected. Both the index and thumb tips must reach
+away from the palm and the other fingers, so contact over a slightly raised
+index in a fist does not qualify. Clearance is measured from each tip to palm
+bone segments (at least 0.60 of palm size) and the other three finger chains
+(at least 0.50). Index reach from its knuckle must be at least 0.75 of palm size;
+thumb reach from its base joint must be at least 0.55. These are geometric
+estimates, using world landmarks when available. The approach angle is diagnostic
+only: recorded valid pinches and loose fists overlap in angle, so it cannot
+reliably separate the poses. Reach and clearance checks apply to both hands and
+both pinch entry and retention.
+This specific closed-hand shape can
 override a canned fist label; an open-hand/OK-sign pinch is not accepted.
 UNKNOWN represents uncertain/unsupported poses; it is not forced to OPEN_PALM.
 
@@ -164,16 +241,32 @@ one-shot events: Godot must decide how and when they activate a game action.
 **Live validation required:** FIST is the model's general closed-fist class.
 Test your intended knuckles-and-thumb-facing-camera pose; exact facing direction
 is not enforced by this model. PINCH estimates fingertip proximity, not physical
-contact, and its thresholds may need tuning for your hands/camera. Player ownership
-is still unresolved, so bystander hands can also produce gesture observations.
+contact, and its thresholds may need tuning for your hands/camera. Player lock
+reduces accidental reassignment but does not establish body ownership; bystander
+hands may still be ambiguous.
 See the [gesture checks](vision/LIVE_CAMERA_CHECKLIST.md#gestures).
 
 For tuning, use `python vision/vertical_demo.py --debug --gesture-debug`
 (or `uv run vision/vertical_demo.py --debug --gesture-debug`). It enables gestures
 and prints model label/score, normalized pinch gap, estimated 3D gap, extended
-finger count, curled supporting fingers (`curled=3/3` for pinch), index reach,
+finger count, curled supporting fingers (`curled=3/3` for pinch), index/thumb reach,
+palm clearance, other-finger clearance,
+fingertip approach angle (`approach_angle`), thumb tilt in degrees (`thumb_tilt`),
+reach/curl shape eligibility (`pinch_shape`), thumbs-up eligibility (`thumb_allowed`),
+and named failing pinch checks (`pinch_block`, or `none` when none fail),
+minimum fingertip separation (`min_tip_gap`), the closest landmark pair
+(`closest_tips`), and failing open-palm checks (`open_block`),
+compact-hand support for lower-confidence fists (`fist_support`),
 raw decision, and final stabilized label four times a second.
 `hand missing` means tracking/association failed, rather than just classification.
+Gesture debug prints `slot_check=accepted` or a rejection/pending reason:
+`confirming_handedness`, `low_handedness`, `no_matching_hand`, `motion`,
+`opposite_track_conflict`, or `ambiguous_same_side`. Raw `candidates` include
+corrected anatomical labels, handedness scores, and positions, including when a
+slot is missing. The debug camera also displays these labels/scores. The `model`
+score elsewhere in the line describes the gesture, not handedness.
+`pinch_block` explains pinch rejection only; it is expected to list failures while
+making a thumbs-up. Use `thumb_allowed` and `thumb_tilt` for thumb direction checks.
 Green rings in the camera view mark thumb/index tips, connected by a line;
 amber rings mark the middle, ring, and little fingertips.
 Use these readings to diagnose remaining failures; thresholds have synthetic
@@ -240,13 +333,10 @@ converts BGR to RGB and runs MediaPipe Tasks Hand Landmarker in VIDEO mode with
 a maximum of two hands. Palm position averages landmarks 0, 5, 9, 13, and 17:
 the wrist and four finger bases. Fingertips do not drive the cursor.
 
-Handedness establishes identity at acquisition (minimum score 0.65). Subsequent
-frames use one-to-one nearest-position association with a motion gate to resist
-momentary label flips. History expires after 200 ms without a match; reacquisition
-uses handedness again. Missing detections enter the state layer below. Full overlap,
-occlusion, or incorrect initial classification can still confuse identity;
-briefly remove both hands and present them separately to reacquire. Handedness
-score measures left/right certainty, not hand-presence confidence.
+`PalmSlots` in `vision/hand_detector.py` gates every frame by anatomical label
+and handedness confidence, rejects duplicate/suspicious candidates, and confirms
+new or returning hands for 60 ms. Position continuity cannot override the label.
+There is one hand-model pipeline and no body-model inference.
 
 ### Step 1: persistent hand state
 
@@ -286,8 +376,8 @@ Exposure and backend buffering still need hardware measurements.
 
 Use the [live camera checklist](vision/LIVE_CAMERA_CHECKLIST.md) to check controls,
 hand loss, capture performance, UDP, and shutdown. It includes a results table
-and explicitly marks bystander rejection as a known failing area: player ownership
-is not yet implemented.
+with seated-play, strict handedness, controlled reacquisition, and bystander
+tests. Handedness classification still needs live validation; it is not player identity.
 
 `vision/capture.py` reads the live webcam on a dedicated thread. Each captured
 image replaces a single latest-frame slot. If inference is slower than capture,
@@ -332,7 +422,7 @@ python -m unittest discover -s vision -v
 ```
 
 These need no webcam and no model file, so they are the fastest way to confirm a
-fresh setup on any platform. All 52 should pass.
+fresh setup on any platform. All 82 should pass.
 
 Reference: [MediaPipe Hand Landmarker Python guide](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python).
 

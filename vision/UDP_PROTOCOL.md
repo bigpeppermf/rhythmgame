@@ -40,6 +40,23 @@ retransmission, camera image, or game event is sent. Godot owns judgment/scoring
 - `state`: TRACKED, COASTING, or LOST. COASTING holds position; LOST position is
   only a placeholder and must not be treated as a usable hand.
 
+The demo uses hand-only anatomical slots. Every accepted observation must match
+the slot's left/right label with handedness confidence at least 0.80. Continuity
+cannot override a mismatching label. New/returning hands require 60 ms of
+consistent observations, with no body selection or calibration. C clears both
+cursor and gesture history. Rejected observations follow existing COASTING/LOST
+rules and immediately clear gestures. Duplicate same-label candidates are
+ambiguous, not a reason to fill the opposite slot. This does not identify the
+main player: another person's same-side hand can still qualify. There are no
+wire-field, port, or normalized full-frame coordinate changes.
+
+On the specific MediaPipe gesture packet-ownership failure, CV drops the failed
+frame's observations and clears gestures before recreating the recognizer.
+During recovery or a paused detector, fresh camera frames carry unavailable
+hands through the existing COASTING/LOST rules. Recognizer recreation can stall
+packet delivery briefly, so receivers must retain their packet timeout. Recovery
+does not introduce new wire fields or request a Godot pause automatically.
+
 ## Receiver behavior for the Godot teammate
 
 ### Optional gesture extension
@@ -64,10 +81,21 @@ COASTING retains position. New gestures confirm over 40 ms; uncertain classifica
 can retain the previous gesture for at most 100 ms since its last support only
 while the hand is still detected. Pinch has separate entry/release thresholds.
 
-FIST does not certify a specific camera-facing orientation. PINCH estimates
+FIST accepts a Closed_Fist model score of at least 0.70, or at least 0.55 when
+compact curled-hand geometry supports it; the original model score is retained
+as gesture_conf. It does not certify a specific camera-facing orientation. PINCH estimates
 thumb/index-tip proximity with the middle, ring, and little fingers loosely curled and
-the index reaching toward the thumb (a closed-hand pinch). An open-hand OK sign
-is not PINCH. Both need real-camera validation. These fields report
+both touching tips reaching clear of the palm and remaining fingers (a closed-hand
+pinch). Contact over a slightly raised index in a fist does not qualify. An open-hand OK sign
+is not PINCH. OPEN_PALM requires all fingertips visibly separated: thumb/index
+gap at least 0.55 and every tip pair at least 0.18 of palm size, including when
+the model reports Open_Palm. An otherwise open hand with touching thumb/index
+tips reports UNKNOWN. Pinch uses index reach and clearance from the palm/other fingers;
+the fingertip approach angle is diagnostic only. THUMBS_UP requires the thumb's base-to-tip and
+last-joint-to-tip directions to be within 25 degrees of camera-frame vertical,
+with thumb/index tips separated by at least 0.55 of palm size, including when
+the canned model reports Thumb_Up. These rules need real-camera
+validation. These fields report
 poses only; they do not report hits, presses, or rising-edge events. Godot owns
 action transitions and judgment, and must also clear gestures on packet timeout.
 

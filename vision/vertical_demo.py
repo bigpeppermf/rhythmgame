@@ -29,7 +29,7 @@ def label(canvas, text, xy, color=(220, 220, 220)):
 
 
 def draw_panel(states, fps, detection_ms, capture_fps=None, skipped=0, frame_age_ms=0.0,
-               gestures_enabled=False):
+               gestures_enabled=False, player_status=""):
     """Draw only synthetic cursors; the webcam image is absent."""
     panel = np.full((480, 640, 3), 22, dtype=np.uint8)
     label(panel, "Vertical input demo - y=0 top, y=1 bottom", (20, 28))
@@ -52,11 +52,12 @@ def draw_panel(states, fps, detection_ms, capture_fps=None, skipped=0, frame_age
         if gestures_enabled:
             label(panel, f"{hand.gesture.label} {hand.gesture.confidence:.2f}",
                   (column - 100, 449), color)
-    label(panel, "D: toggle palm debug | Q or Esc: quit", (20, 465))
+    label(panel, player_status, (10, 105), (100, 220, 255))
+    label(panel, "C: reset hands | D: debug | R: retry | Q/Esc: quit", (20, 465))
     return panel
 
 
-def poll_keys(debug):
+def poll_keys(debug, reset=None, retry=None):
     """Keep window events responsive both during detection and capture waits."""
     key = cv2.waitKey(1) & 0xFF
     if key in (ord("q"), 27) or cv2.getWindowProperty("Vertical input", cv2.WND_PROP_VISIBLE) < 1:
@@ -68,6 +69,11 @@ def poll_keys(debug):
                 cv2.destroyWindow("Debug camera")
             except cv2.error:
                 pass  # D may be pressed before the first debug frame exists.
+    if key == ord("c") and reset is not None:
+        reset()
+        debug = True
+    if key == ord("r") and retry is not None:
+        retry()
     return debug, False
 
 
@@ -117,6 +123,15 @@ def main():
     model_path = args.model or (DEFAULT_GESTURE_MODEL if args.gestures else DEFAULT_MODEL)
     detector = HandDetector(model_path, gestures=args.gestures)
     state_tracker = HandStateTracker()
+    def reset_hands():
+        nonlocal state_tracker
+        detector.reset_slots()
+        state_tracker = HandStateTracker()
+        print("Hand history cleared; confirming left/right hands again.", flush=True)
+
+    def player_status():
+        return detector.health_message or "Hand-only: strict left/right | no calibration needed"
+
     cap = cv2.VideoCapture(args.video) if args.video else open_camera(args.camera, backend)
     sender = None
     preview = None
@@ -140,13 +155,14 @@ def main():
                 print(f"Camera property {prop}: requested={value}, readback={cap.get(prop)}, accepted={accepted}")
             capture = LatestFrameCapture(cap)
         debug = args.debug
+        print(player_status(), flush=True)
         count, fps, start = 0, 0.0, perf_counter()
         last_frame_at = start
         last_sequence, skipped = 0, 0
         last_udp_warning = float("-inf")
         last_gesture_log = float("-inf")
         cv2.imshow("Vertical input", draw_panel(state_tracker.hands, 0, 0,
-                                               gestures_enabled=args.gestures))
+                                               gestures_enabled=args.gestures, player_status=player_status()))
         while True:
             if capture is None:
                 # Files intentionally remain sequential, with no discarded frames.
@@ -165,14 +181,15 @@ def main():
                         unavailable = tuple(replace(hand, state="LOST", confidence=0.0,
                                                     velocity=(0.0, 0.0), gesture=Gesture())
                                             for hand in state_tracker.hands)
-                        panel = draw_panel(unavailable, 0, 0, gestures_enabled=args.gestures)
+                        panel = draw_panel(unavailable, 0, 0, gestures_enabled=args.gestures,
+                                           player_status=player_status())
                         label(panel, "Waiting for camera frame...", (20, 76))
                         cv2.imshow("Vertical input", panel)
                         if debug:
                             blank = np.zeros((480, 640, 3), dtype=np.uint8)
                             label(blank, "Waiting for camera frame...", (20, 40))
                             cv2.imshow("Debug camera", blank)
-                    debug, quit_requested = poll_keys(debug)
+                    debug, quit_requested = poll_keys(debug, reset_hands, detector.retry)
                     if quit_requested:
                         break
                     if now - last_frame_at >= 2.0:
@@ -186,9 +203,13 @@ def main():
             before = perf_counter()
             hands = detector.detect(frame, t_capture)
             if args.gesture_debug and t_capture - last_gesture_log >= 0.25:
-                for (name, _), hand in zip(SLOTS, hands):
+                for slot, ((name, _), hand) in enumerate(zip(SLOTS, hands)):
                     details = (f"{hand.gesture_debug} final={hand.gesture.label}:{hand.gesture.confidence:.2f}"
                                if hand is not None else "hand missing")
+                    details += " " + detector.slots.diagnostics(slot)
+                    candidates = ";".join(f"{p.handedness}:{p.score:.2f}@{p.position[0]:.2f},{p.position[1]:.2f}"
+                                          for p in detector.candidates)
+                    details += f" candidates=[{candidates}]"
                     print(f"{name}: {details}", flush=True)
                 last_gesture_log = t_capture
             positions = [hand.position if hand is not None else None for hand in hands]
@@ -211,8 +232,13 @@ def main():
                     last_udp_warning = t_capture
             cv2.imshow("Vertical input", draw_panel(
                 states, fps, detection_ms, sample.fps if capture is not None else None,
-                skipped, frame_age_ms, gestures_enabled=args.gestures))
+                skipped, frame_age_ms, gestures_enabled=args.gestures, player_status=player_status()))
             if debug:
+                height, width = frame.shape[:2]
+                label(frame, player_status(), (10, 25), (100, 220, 255))
+                for index, candidate in enumerate(detector.candidates):
+                    label(frame, f"Hand {index + 1}: {candidate.handedness} {candidate.score:.2f}",
+                          (10, 48 + 22 * index), (180, 180, 180))
                 for (name, color), hand in zip(SLOTS, hands):
                     if hand is None:
                         continue
@@ -233,7 +259,7 @@ def main():
                     caption = f"{name}: {hand.gesture.label}" if args.gestures else name
                     label(frame, caption, point, color)
                 cv2.imshow("Debug camera", frame)
-            debug, quit_requested = poll_keys(debug)
+            debug, quit_requested = poll_keys(debug, reset_hands, detector.retry)
             if quit_requested:
                 break
     finally:
@@ -248,8 +274,10 @@ def main():
         elif not capture.close():
             print("Camera driver is still blocked in read(); capture worker will release it when it returns.",
                   file=sys.stderr)
-        detector.close()
-        cv2.destroyAllWindows()
+        try:
+            detector.close()
+        finally:
+            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
