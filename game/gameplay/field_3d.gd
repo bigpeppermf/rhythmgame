@@ -46,10 +46,10 @@ const SOLO_TRACK_X := 0.5
 const DRIFT := 9.0
 
 ## True while a one-hand playfield is active. Only slot 0 is ever used in that
-## mode; its panel moves to centre instead of splitting into two. Whichever
-## scene owns the field sets this at startup - Field3D has no scene lifecycle
-## of its own to reset it, so every scene must set it explicitly rather than
-## assume the default.
+## mode; its panel is the left panel's exact shape, slid over to the centre
+## instead of sitting off to one side. Whichever scene owns the field sets
+## this at startup - Field3D has no scene lifecycle of its own to reset it,
+## so every scene must set it explicitly rather than assume the default.
 static var solo := false
 
 
@@ -60,8 +60,6 @@ static func slot_count() -> int:
 
 
 static func side(slot: int) -> float:
-	if solo:
-		return 0.0
 	return -1.0 if slot == 0 else 1.0
 
 
@@ -69,14 +67,22 @@ static func depth() -> float:
 	return LOOKAHEAD * SCROLL
 
 
+## Horizontal offset applied to the whole panel. Solo mode keeps the panel's
+## normal splayed shape and just translates it so its x extent is centred on
+## the camera. The angle is not decoration: a panel whose near and far edges
+## share an x is edge-on to a centred camera and collapses to a line.
+static func x_shift() -> float:
+	return (OUTER_X + INNER_X) * 0.5 if solo else 0.0
+
+
 ## Centre of the hit edge: where notes arrive and the hand waits.
 static func hit_edge(slot: int) -> Vector3:
-	return Vector3(side(slot) * OUTER_X, 0.0, 0.0)
+	return Vector3(side(slot) * OUTER_X + x_shift(), 0.0, 0.0)
 
 
 ## Centre of the far edge, where notes appear.
 static func far_edge(slot: int) -> Vector3:
-	return Vector3(side(slot) * INNER_X, 0.0, -depth())
+	return Vector3(side(slot) * INNER_X + x_shift(), 0.0, -depth())
 
 
 ## Movement per second along the panel, pointing away from the player.
