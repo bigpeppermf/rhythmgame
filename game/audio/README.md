@@ -4,14 +4,10 @@ Nothing here is committed. Drop your own audio files in locally.
 
 ## Solo mode (Play (1H) on the menu)
 
-This is where GH-converted charts get prototyped - see
-`../../tools/gh_chart_convert.py`. It reads a `.chart` file into
-`charts/solo.json` but never touches audio: the `.chart` file only has
-note/timing data, the real song is a separate file that ships alongside it
-in the same folder (usually `song.ogg`).
+One hand, one centred lane - see `../charts/README.md` for how to author
+`charts/solo.json`.
 
-1. Copy that audio file here, e.g. `solo.ogg` (`.wav`/`.mp3` also load) -
-   or pass `--copy-audio` to the converter and it'll do this step for you.
+1. Drop the track here, e.g. `solo.ogg` (`.wav`/`.mp3` also load).
 2. Make sure `charts/solo.json`'s `"audio"` field points at it.
 
 Until it's there, `charts/solo.json` ships with an empty `notes` array and

@@ -40,3 +40,9 @@ Thumbs.db
 # dropped in locally (see game/audio/README.md).
 game/audio/*
 !game/audio/README.md
+
+# --- Local GH/Clone Hero song folders (source material for
+# tools/gh_chart_convert.py) - other people's copyrighted content, never ours
+# to commit. game/charts/*.json is a separate, tracked thing: this only
+# ignores the raw song folders at the repo root.
+/charts/
