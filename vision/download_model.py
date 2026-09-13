@@ -1,4 +1,4 @@
-"""Download Google's Hand Landmarker model once; inference stays local."""
+"""Download Google's hand model and optional gestures; inference stays local."""
 
 from pathlib import Path
 import argparse

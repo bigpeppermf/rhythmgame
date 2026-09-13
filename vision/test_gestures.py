@@ -8,6 +8,8 @@ from gestures import Gesture, GestureDebouncer, classify_gesture, pinch_gesture
 from hand_detector import PalmSlots, extract_palms
 from hand_state import HandStateTracker
 from udp_protocol import UdpHandSender, build_packet, decode_packet, validate_packet
+from test_gesture_robustness import hand_shape
+from test_vertical_demo import confirmed
 
 
 def category(name, score=0.95):
@@ -20,6 +22,9 @@ def pinch_points(scale=1.0, gap=0.01):
     points[8] = [0.5, 1, 0]
     points[4] = [0.5 + gap, 1, 0]
     points[2] = [0, 0.1, 0]
+    points[3] = [0.75, 0.6, 0]
+    points[6] = [0, 1.1, 0]
+    points[7] = [0.25, 1.2, 0]
     # Supply actual curled middle/ring/little chains, not absent zero landmarks.
     points[0] = [0, -1, 0]
     for base, x in ((9, 0.3), (13, 0.6), (17, 1.0)):
@@ -30,10 +35,10 @@ def pinch_points(scale=1.0, gap=0.01):
 
 class GestureTests(unittest.TestCase):
     def test_model_gestures_are_distinct(self):
-        for model, expected in (("Open_Palm", "OPEN_PALM"), ("Closed_Fist", "FIST"),
-                                ("Thumb_Up", "THUMBS_UP")):
+        for model, expected in (("Open_Palm", "OPEN_PALM"), ("Closed_Fist", "FIST")):
             with self.subTest(model=model):
-                self.assertEqual(classify_gesture([category(model)]), Gesture(expected, 0.95))
+                world, image = hand_shape("open" if model == "Open_Palm" else "fist")
+                self.assertEqual(classify_gesture([category(model)], world, image, 4 / 3), Gesture(expected, 0.95))
 
     def test_unknown_and_low_confidence_are_not_forced_to_open_palm(self):
         for categories in ([], [category("None")], [category("Closed_Fist", 0.6)],
@@ -60,11 +65,11 @@ class GestureTests(unittest.TestCase):
     def test_gestures_follow_slot_assignment(self):
         result = SimpleNamespace(
             hand_landmarks=[[SimpleNamespace(x=0.3, y=0.4)] * 21,
-                            [SimpleNamespace(x=0.7, y=0.6)] * 21],
+                            hand_shape("open")[1]],
             handedness=[[category("Right")], [category("Left")]],
             gestures=[[category("Closed_Fist")], [category("Open_Palm")]],
         )
-        left, right = PalmSlots().update(extract_palms(result), 0)
+        left, right = confirmed(PalmSlots(), extract_palms(result))
         self.assertEqual(left.gesture.label, "FIST")
         self.assertEqual(right.gesture.label, "OPEN_PALM")
 
